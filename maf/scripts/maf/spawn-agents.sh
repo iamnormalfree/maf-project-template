@@ -9,7 +9,18 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # Calculate project root independently of SCRIPT_DIR to avoid conflicts
 MAF_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 LIB_DIR="$SCRIPT_DIR/lib"
-PROJECT_ROOT="$(cd "$(dirname "$MAF_SCRIPT_DIR")/.." && pwd)"
+# For subtree layout (maf/scripts/maf/), go up three levels from scripts/ to reach project root
+# For direct layout (scripts/maf/), go up two levels from scripts/ to reach project root
+# Detect if we're in a subtree by checking path pattern
+if [[ "$MAF_SCRIPT_DIR" == *"/maf/scripts/maf" ]]; then
+    # We're in a subtree: maf/scripts/maf/ -> go up 3 levels to project root
+    # dirname(maf/scripts/maf) = maf/scripts -> ../.. = project root
+    PROJECT_ROOT="$(cd "$(dirname "$MAF_SCRIPT_DIR")/../.." && pwd)"
+else
+    # We're in direct layout: scripts/maf/ -> go up 2 levels to project root
+    # dirname(scripts/maf) = scripts -> .. = project root
+    PROJECT_ROOT="$(cd "$(dirname "$MAF_SCRIPT_DIR")/.." && pwd)"
+fi
 
 # Source core libraries
 source "$LIB_DIR/error-handling.sh"

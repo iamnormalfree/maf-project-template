@@ -6,7 +6,14 @@ set -euo pipefail
 
 # Script directory and project root detection
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROJECT_ROOT="$(cd "$(dirname "$SCRIPT_DIR")/../.." && pwd)"
+# Detect subtree layout and adjust PROJECT_ROOT accordingly
+if [[ "$SCRIPT_DIR" == *"/maf/scripts/maf/lib" ]]; then
+    # Subtree layout: maf/scripts/maf/lib/ -> go up 4 levels
+    PROJECT_ROOT="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+else
+    # Direct layout: scripts/maf/lib/ -> go up 3 levels
+    PROJECT_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+fi
 
 # Credential storage paths
 CODEX_DIR="$PROJECT_ROOT/.codex"
