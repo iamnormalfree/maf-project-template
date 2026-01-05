@@ -16,8 +16,16 @@ MAF enables AI agents to work collaboratively on your codebase through:
 Add MAF to any repository in one command:
 
 ```bash
-git subtree add --prefix=maf https://github.com/yourorg/maf main --squash
+git subtree add --prefix=maf https://github.com/iamnormalfree/maf main --squash
 ```
+
+Then run the automated setup script:
+
+```bash
+bash maf/scripts/setup-maf.sh
+```
+
+The script will configure everything automatically, with support for environment variables like `OPENAI_API_KEY`.
 
 See [SETUP.md](SETUP.md) for complete configuration guide.
 
@@ -26,6 +34,7 @@ See [SETUP.md](SETUP.md) for complete configuration guide.
 - **lib/maf/**: Core TypeScript library (orchestration, scheduling, decisions)
 - **.claude/**: Response Awareness framework (20+ skills, 23 specialized agents)
 - **scripts/maf/**: 170+ operational scripts (spawn, monitor, coordinate)
+- **scripts/setup-maf.sh**: Automated setup script with environment variable support
 - **mcp_agent_mail/**: Complete communication layer
 - **Telegram Bot**: Remote agent coordination and monitoring
 - **.maf/config/**: Configuration templates
@@ -40,9 +49,11 @@ See [SETUP.md](SETUP.md) for complete configuration guide.
 
 ## Versioning
 
+- **v0.1.3**: Added automated setup script with environment variable support
+- **v0.1.2**: Fixed subtree layout detection for git subtree compatibility
 - **v0.1.1**: Added Telegram bot integration
 - **v0.1.0**: Initial distribution from roundtable
-- See [Releases](https://github.com/yourorg/maf/releases) for changelog
+- See [Releases](https://github.com/iamnormalfree/maf/releases) for changelog
 
 ## License
 
@@ -50,5 +61,5 @@ MIT
 
 ## Support
 
-- Issues: github.com/yourorg/maf/issues
-- Discussions: github.com/yourorg/maf/discussions
+- Issues: https://github.com/iamnormalfree/maf/issues
+- Discussions: https://github.com/iamnormalfree/maf/discussions

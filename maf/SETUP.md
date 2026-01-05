@@ -15,11 +15,42 @@ MAF is a sophisticated autonomous agent orchestration system that enables AI age
 
 ## Quick Start (5 minutes)
 
+### Option A: Automated Setup (Recommended)
+
+After adding MAF as a subtree, run the automated setup script:
+
+```bash
+# From your repository root (after adding MAF subtree)
+bash maf/scripts/setup-maf.sh
+```
+
+**The script will:**
+- Create all necessary directories and config files
+- Detect and use environment variables for credentials (e.g., `OPENAI_API_KEY`)
+- Fall back to credential files if env vars not set
+- Initialize MCP Agent Mail
+- Install dependencies
+- Validate the installation
+
+**Using Environment Variables:**
+```bash
+# Set your API keys as environment variables (script will auto-detect)
+export OPENAI_API_KEY=sk-your-key-here
+export GITHUB_TOKEN=ghp-your-token-here
+
+# Then run the setup script
+bash maf/scripts/setup-maf.sh
+```
+
+### Option B: Manual Setup
+
+If you prefer manual setup or need to customize each step:
+
 ### 1. Add MAF to Your Repository
 
 ```bash
 # From your repository root
-git subtree add --prefix=maf https://github.com/yourorg/maf main --squash
+git subtree add --prefix=maf https://github.com/iamnormalfree/maf main --squash
 ```
 
 This creates a `maf/` directory with everything needed.
@@ -37,6 +68,14 @@ nano .maf/config/agent-topology.json
 
 ### 3. Add Credentials
 
+**Option 1: Use Environment Variables (Recommended)**
+```bash
+# Export your API keys (add to ~/.bashrc or ~/.zshrc for persistence)
+export OPENAI_API_KEY=sk-your-key-here
+export GITHUB_TOKEN=ghp-your-token-here
+```
+
+**Option 2: Use Credential Files**
 ```bash
 # Create credentials directory
 mkdir -p .maf/credentials
@@ -64,7 +103,7 @@ pnpm install
 ### 6. Spawn Your First Agents
 
 ```bash
-bash maf/scripts/maf/spawn-agents.sh --layout minimal_2_pane --agents 2
+bash maf/scripts/maf/spawn-agents.sh --layout minimal_2_pane --workers 2
 ```
 
 That's it! You now have autonomous agents ready to work on your codebase.
