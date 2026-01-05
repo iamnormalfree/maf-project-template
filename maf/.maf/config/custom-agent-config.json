@@ -1,0 +1,358 @@
+{
+  "$schema": "./scripts/maf/config/agent-config-schema.json",
+  "version": "1.0.0",
+  "metadata": {
+    "created": "2025-01-16T00:00:00Z",
+    "last_updated": "2025-01-16T00:00:00Z",
+    "description": "Custom configuration for 1 reviewer, 3 implementors, and 1 committer",
+    "nextnest_version": "14.0.0"
+  },
+
+  "agent_types": {
+    "claude-worker": {
+      "description": "Standard Claude AI worker for task execution and development",
+      "capabilities": [
+        "code_implementation",
+        "debugging",
+        "testing",
+        "documentation",
+        "file_operations"
+      ],
+      "default_model": "claude-sonnet-4-5",
+      "resource_limits": {
+        "cpu_percent": 60,
+        "memory_mb": 512,
+        "max_sessions": 3
+      },
+      "environment": {
+        "NODE_ENV": "development",
+        "MAF_AGENT_TYPE": "claude-worker",
+        "CLAUDE_MODEL": "claude-sonnet-4-5",
+        "ENABLE_RESPONSE_AWARENESS": "true",
+        "ENABLE_TDD_ENFORCEMENT": "true",
+        "ENABLE_CANONICAL_REFERENCES_CHECK": "true"
+      }
+    },
+
+    "claude-committer": {
+      "description": "Specialized Claude agent for git commit management and integration",
+      "capabilities": [
+        "git_operations",
+        "commit_message_generation",
+        "code_review",
+        "integration_testing",
+        "workflow_automation"
+      ],
+      "default_model": "claude-sonnet-4-5",
+      "resource_limits": {
+        "cpu_percent": 40,
+        "memory_mb": 256,
+        "max_sessions": 2
+      },
+      "environment": {
+        "NODE_ENV": "development",
+        "MAF_AGENT_TYPE": "claude-committer",
+        "CLAUDE_MODEL": "claude-sonnet-4-5",
+        "GIT_COMMITTER_NAME": "Claude Committer",
+        "GIT_COMMITTER_EMAIL": "claude@nextnest.internal",
+        "ENABLE_PRE_COMMIT_HOOKS": "true",
+        "ENABLE_CAN_TASK_LINKER": "true"
+      },
+      "specialized_tools": [
+        "can-task-linker",
+        "evidence-collector",
+        "dr-elena-compliance-checker"
+      ]
+    },
+
+    "claude-reviewer": {
+      "description": "Code review and analysis specialist (using Claude instead of Codex)",
+      "capabilities": [
+        "static_analysis",
+        "security_review",
+        "performance_analysis",
+        "code_quality_assessment",
+        "documentation_review"
+      ],
+      "default_model": "claude-sonnet-4-5",
+      "resource_limits": {
+        "cpu_percent": 30,
+        "memory_mb": 256,
+        "max_sessions": 2
+      },
+      "environment": {
+        "NODE_ENV": "development",
+        "MAF_AGENT_TYPE": "claude-reviewer",
+        "CLAUDE_MODEL": "claude-sonnet-4-5",
+        "REVIEW_MODE": "comprehensive",
+        "ENABLE_SECURITY_SCAN": "true",
+        "ENABLE_PERFORMANCE_ANALYSIS": "true",
+        "CODERABBIT_INTEGRATION": "true"
+      }
+    },
+
+    "coordinator": {
+      "description": "Session coordinator and monitoring agent",
+      "capabilities": [
+        "session_management",
+        "resource_monitoring",
+        "health_checking",
+        "log_aggregation",
+        "workflow_orchestration"
+      ],
+      "default_model": "claude-haiku",
+      "resource_limits": {
+        "cpu_percent": 20,
+        "memory_mb": 128,
+        "max_sessions": 1
+      },
+      "environment": {
+        "NODE_ENV": "development",
+        "MAF_AGENT_TYPE": "coordinator",
+        "CLAUDE_MODEL": "claude-haiku",
+        "MONITORING_MODE": "active",
+        "HEALTH_CHECK_INTERVAL": "30",
+        "LOG_AGGREGATION": "true"
+      }
+    }
+  },
+
+  "session_layouts": {
+    "custom_5_pane": {
+      "description": "Custom 5-pane layout with 1 reviewer, 3 implementors, and 1 committer",
+      "panes": [
+        {
+          "position": "top-left",
+          "size": "20%",
+          "agent_type": "coordinator",
+          "name": "coordinator",
+          "windows": [
+            {
+              "name": "monitor",
+              "command": "watch -n 5 'echo \"=== MAF Status ===\" && tmux list-sessions | grep maf || echo \"No sessions\"'",
+              "startup": true
+            }
+          ]
+        },
+        {
+          "position": "top-center-left",
+          "size": "20%",
+          "agent_type": "claude-worker",
+          "name": "implementor-1",
+          "windows": [
+            {
+              "name": "workspace",
+              "command": "echo 'Ready to implement tasks. Use npm run maf:claim-task to claim work.'",
+              "startup": true
+            }
+          ]
+        },
+        {
+          "position": "top-center-right",
+          "size": "20%",
+          "agent_type": "claude-worker",
+          "name": "implementor-2",
+          "windows": [
+            {
+              "name": "workspace",
+              "command": "echo 'Ready to implement tasks. Use npm run maf:claim-task to claim work.'",
+              "startup": true
+            }
+          ]
+        },
+        {
+          "position": "bottom-left",
+          "size": "20%",
+          "agent_type": "claude-worker",
+          "name": "implementor-3",
+          "windows": [
+            {
+              "name": "workspace",
+              "command": "echo 'Ready to implement tasks. Use npm run maf:claim-task to claim work.'",
+              "startup": true
+            }
+          ]
+        },
+        {
+          "position": "bottom-center",
+          "size": "20%",
+          "agent_type": "claude-reviewer",
+          "name": "reviewer",
+          "windows": [
+            {
+              "name": "review",
+              "command": "echo 'Ready to review code. Waiting for implementations to review.'",
+              "startup": true
+            }
+          ]
+        },
+        {
+          "position": "bottom-right",
+          "size": "20%",
+          "agent_type": "claude-committer",
+          "name": "committer",
+          "windows": [
+            {
+              "name": "git",
+              "command": "echo 'Ready to commit approved changes.' && git status",
+              "startup": true
+            }
+          ]
+        }
+      ],
+      "tmux_options": {
+        "remain-on-exit": false,
+        "mouse": true
+      }
+    },
+
+    "glm_review_3_pane": {
+      "description": "GLM-style 3-pane layout (for backward compatibility)",
+      "panes": [
+        {
+          "position": "left",
+          "size": "33%",
+          "agent_type": "claude-worker",
+          "name": "glm-worker",
+          "windows": [
+            {
+              "name": "workspace",
+              "command": "echo 'GLM Worker ready. Use npm run maf:claim-task to claim work.'",
+              "startup": true
+            }
+          ]
+        },
+        {
+          "position": "center",
+          "size": "34%",
+          "agent_type": "claude-reviewer",
+          "name": "claude-reviewer",
+          "windows": [
+            {
+              "name": "review",
+              "command": "echo 'Claude Reviewer ready. Waiting for code to review.'",
+              "startup": true
+            }
+          ]
+        },
+        {
+          "position": "right",
+          "size": "33%",
+          "agent_type": "claude-committer",
+          "name": "claude-committer",
+          "windows": [
+            {
+              "name": "git",
+              "command": "echo 'Claude Committer ready.' && git status",
+              "startup": true
+            }
+          ]
+        }
+      ]
+    }
+  },
+
+  "integration_settings": {
+    "npm_scripts": {
+      "maf:claim-task": "node --import tsx scripts/maf/claim-task.ts",
+      "maf:status": "node --import tsx scripts/maf/status.ts",
+      "maf:review-pending": "echo 'Review pending work...'",
+      "maf:health-check": "node scripts/maf/health-check.mjs"
+    },
+
+    "agent_mail": {
+      "enabled": true,
+      "mailbox_path": ".agent-mail/",
+      "mcp_server_path": "mcp_agent_mail/",
+      "polling_interval": 10,
+      "auto_claim_tasks": true,
+      "task_routing": {
+        "claude-worker": ["implementation", "bug_fix", "feature", "testing"],
+        "claude-committer": ["commit", "integration", "workflow"],
+        "claude-reviewer": ["review", "analysis", "quality_check"],
+        "coordinator": ["monitoring", "coordination", "health"]
+      }
+    },
+
+    "beads_workflow": {
+      "enabled": true,
+      "ready_command": "node scripts/check-beads-integrity.mjs",
+      "assign_command": "echo 'Assign beads task...'",
+      "close_command": "echo 'Close beads task...'",
+      "constraint_filtering": true,
+      "auto_assignment": true,
+      "evidence_collection": true
+    },
+
+    "git_workflow": {
+      "auto_branch_creation": true,
+      "branch_prefix": "maf/",
+      "commit_template": "maf: {type}: {description}\\n\\n🤖 Generated with MAF orchestration\\n\\nCo-Authored-By: Claude <noreply@anthropic.com>",
+      "pre_commit_hooks": [
+        "npm run lint",
+        "npm test",
+        "npm run build"
+      ],
+      "auto_merge_enabled": false,
+      "merge_strategy": "squash"
+    }
+  },
+
+  "monitoring": {
+    "health_checks": {
+      "enabled": true,
+      "interval": 30,
+      "timeout": 10,
+      "retry_count": 3,
+      "checks": [
+        "session_status",
+        "resource_usage",
+        "log_activity",
+        "task_progress",
+        "agent_responsiveness"
+      ]
+    }
+  },
+
+  "security": {
+    "agent_isolation": {
+      "enabled": true,
+      "sandbox_mode": "restrictive",
+      "allowed_paths": [
+        "/root/projects/roundtable",
+        "/tmp"
+      ],
+      "blocked_commands": [
+        "rm -rf /",
+        "sudo su",
+        "chmod 777",
+        "dd if="
+      ],
+      "network_access": "restricted"
+    },
+
+    "authentication": {
+      "enabled": false,
+      "method": "token",
+      "token_rotation": 3600,
+      "session_timeout": 7200
+    },
+
+    "audit": {
+      "enabled": true,
+      "log_all_commands": true,
+      "log_file_access": true,
+      "retention_days": 30
+    }
+  },
+
+  "defaults": {
+    "agent_type": "claude-worker",
+    "session_layout": "custom_5_pane",
+    "startup_layout": "glm_review_3_pane",
+    "log_level": "info",
+    "timeout": 300,
+    "retry_count": 3,
+    "auto_cleanup": true
+  }
+}

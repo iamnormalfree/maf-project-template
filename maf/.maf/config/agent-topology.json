@@ -1,0 +1,75 @@
+{
+  "$schema": "./agent-config-schema.json",
+  "version": "1.0.0",
+  "pod": {
+    "session": "maf-cli",
+    "window": "agents",
+    "full_target": "maf-cli:agents"
+  },
+  "panes": [
+    {
+      "index": 0,
+      "role": "supervisor",
+      "agent_name": "GreenMountain",
+      "agent_id": 4,
+      "aliases": ["sup", "0"],
+      "domains": ["coordination", "routing", "merge-gate"],
+      "description": "Coordinates work, routes tasks, manages merge gate"
+    },
+    {
+      "index": 1,
+      "role": "reviewer",
+      "agent_name": "BlackDog",
+      "agent_id": 7,
+      "aliases": ["rev", "1"],
+      "domains": ["review", "validation", "qa"],
+      "description": "Reviews work, validates receipts, approves or reopens"
+    },
+    {
+      "index": 2,
+      "role": "implementor-1",
+      "agent_name": "OrangePond",
+      "agent_id": 5,
+      "aliases": ["imp1", "2"],
+      "domains": ["frontend", "site", "portal"],
+      "description": "Frontend and site implementation"
+    },
+    {
+      "index": 3,
+      "role": "implementor-2",
+      "agent_name": "FuchsiaCreek",
+      "agent_id": 6,
+      "aliases": ["imp2", "3"],
+      "domains": ["backend", "api", "library", "email"],
+      "description": "Backend and API implementation"
+    }
+  ],
+  "role_to_pane": {
+    "supervisor": 0,
+    "reviewer": 1,
+    "implementor-1": 2,
+    "implementor-2": 3
+  },
+  "alias_to_pane": {
+    "sup": 0,
+    "0": 0,
+    "rev": 1,
+    "1": 1,
+    "imp1": 2,
+    "2": 2,
+    "imp2": 3,
+    "3": 3
+  },
+  "worktrees": {
+    "_schema": {
+      "description": "Git worktrees for implementor isolation. Populated by setup-worktrees.sh.",
+      "properties": {
+        "agent_name": "Implementor agent name (e.g., OrangePond, FuchsiaCreek)",
+        "path": "Absolute path to worktree directory (must be absolute)",
+        "branch": "Worktree branch name (e.g., work/orangepond)",
+        "created_at": "ISO timestamp of worktree creation",
+        "last_updated": "ISO timestamp of last update"
+      }
+    }
+  }
+}

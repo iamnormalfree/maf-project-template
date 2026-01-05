@@ -1,0 +1,44 @@
+{
+  "id": "roundtable-auth",
+  "title": "Auth Implementation: Session TTL, Logout Revocation, Already-Used Invite UX",
+  "id_prefixes": ["roundtable-auth."],
+  "base_prefix": "Active plan: roundtable-auth (auth implementation improvements). 7 critical issues fixed. Start by checking Agent Mail and any pending /unblock actions.",
+  "supervisor": {
+    "extra": "Keep everyone on the epic (roundtable-auth.*). Run bv --robot-triage to see available tasks. CRITICAL: Task 0 (.0.1, .0.2) MUST be completed first before any other tasks - these are blocking prerequisites. Route tasks: Task 1.1 (HTML) to OrangePond, all backend/tasks to FuchsiaCreek. Close beads only after reviewer sign-off and tests pass. For complex epic-level decisions, use ultrathink."
+  },
+  "reviewer": {
+    "extra": "Verify each bead's acceptance criteria. For frontend (Task 1.1), check HTML renders correctly with inline styles. For backend changes, verify with pnpm --filter backend test. For logout (Task 3.1), verify sessions are actually revoked in database. **RECEIPT VERIFICATION REQUIRED**: Before approving, check that implementor provided a receipt (summary of changes, files modified, tests run). Verify receipt matches actual changes with git status and git diff. No receipt = re-open with feedback. **GUARDRAILS ACTIVE**: Filesystem guardrails block git commit/push/merge/rebase - use bd close to approve, bd reopen for feedback. Reviewer role is QA-only, not implementation. See docs/agents.md 'Reviewer Guardrails' section. For complex analysis or security reviews, use ultrathink."
+  },
+  "implementor_1": {
+    "label_preferences": ["frontend", "ux", "portal"],
+    "reserve_paths_hint": "apps/backend/src/routes/invites.ts for Task 1.1 only (HTML generation)",
+    "test_commands": ["pnpm --filter backend test inviteAcceptance.test.ts"],
+    "extra": "You only handle Task 1.1 (modify invites.ts to show friendly 'already a member' page). This generates HTML so it's frontend work even though the file is in backend. Use inline styles matching /login pattern. CRITICAL: When implementing beads, ALWAYS start with /response-awareness \"Implement bead [id]: [title]\" - this enables metacognitive orchestration and proper skill selection. **WRITING GOOD ACCEPTANCE CRITERIA**: When creating or updating beads, write verifiable AC. Use \"Script: <command> passes\" instead of \"file exists\". Include exact file paths and actual test commands. See docs/operations/writing-good-ac.md for templates and examples. **RECEIPT REQUIRED**: When closing bead, provide a receipt summarizing: files modified, tests run with results, changes summary, and any deviations from plan. Send receipt via Agent Mail or include in bd close message. No receipt = reviewer will re-open."
+  },
+  "implementor_2": {
+    "label_preferences": ["backend", "auth", "security", "test", "docs", "config", "utility", "refactor"],
+    "reserve_paths_hint": "apps/backend/** (reserve only what you touch per bead instructions)",
+    "test_commands": ["pnpm --filter backend test", "pnpm --filter backend test inviteAcceptance.test.ts memberLogin.test.ts memberAuth.test.ts logout.test.ts"],
+    "extra": "You handle all tasks except Task 1.1. CRITICAL: Start with Task 0 (.0.1 cookieUtils, .0.2 remove duplicate escapeHtml) - these are blocking. For Task 3.1 logout handler: use module-level 'db' variable, DO NOT import getDatabase (doesn't exist). For Task 3.3 test: import both generateAuthToken and hashAuthToken. CRITICAL: When implementing beads, ALWAYS start with /response-awareness \"Implement bead [id]: [title]\" - this enables metacognitive orchestration and proper skill selection. **WRITING GOOD ACCEPTANCE CRITERIA**: When creating or updating beads, write verifiable AC. Use \"Script: <command> passes\" instead of \"file exists\". Include exact file paths and actual test commands. See docs/operations/writing-good-ac.md for templates and examples. **RECEIPT REQUIRED**: When closing bead, provide a receipt summarizing: files modified, tests run with results, changes summary, and any deviations from plan. Send receipt via Agent Mail or include in bd close message. No receipt = reviewer will re-open."
+  },
+  "guardrails": [
+    "CRITICAL: Task 0 (.0.1 and .0.2) MUST be completed FIRST before any other tasks.",
+    "Do not run git commit/push - Supervisor will commit after epic completion.",
+    "Reserve only the paths you will touch before editing (reason=<bead-id>).",
+    "TDD-first: write failing tests before implementation changes.",
+    "Tokens are credentials - never log them or expose in HTML/JSON.",
+    "For Task 3.1 logout handler: Use module-level 'db' variable, NOT import getDatabase (doesn't exist).",
+    "For Task 3.3 logout test: Import generateAuthToken AND hashAuthToken.",
+    "For Task 2.1: .env.example does NOT have MEMBER_SESSION_TTL_DAYS - ADD it NEW.",
+    "Keep changes DRY/YAGNI; small diffs; green tests before closing the bead.",
+    "RECEIPT ENFORCEMENT: No receipt = no close. Implementors must provide receipt, reviewers must verify.",
+    "REVIEWER GUARDRAILS: Reviewer cannot git commit/push/merge/rebase - QA-only role, see docs/agents.md"
+  ],
+  "source_plan": "docs/plans/auth-implementation-plan-audited.md",
+  "critical_notes": [
+    "7 critical issues were fixed in the plan before bead creation",
+    "getDatabase import does NOT exist - use module-level db variable",
+    ".env.example needs MEMBER_SESSION_TTL_DAYS ADDED (not updated)",
+    "Logout test must import both generateAuthToken and hashAuthToken"
+  ]
+}

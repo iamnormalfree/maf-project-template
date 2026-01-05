@@ -1,0 +1,34 @@
+{
+  "id": "roundtable-founder-onboarding",
+  "title": "Founder-ready onboarding: portal approvals + welcome + steward invites",
+  "id_prefixes": ["roundtable-founder-onboarding."],
+  "base_prefix": "Active plan: roundtable-founder-onboarding (founder-ready portal approvals). Start by checking Agent Mail and any pending /unblock actions.",
+  "supervisor": {
+    "extra": "Keep everyone on the epic (roundtable-founder-onboarding.*). Run bd ready to see available tasks (.1, .5, .7, .2 first). Route tasks by labels: portal/site to implementor-1, backend/auth to implementor-2. Close beads only after reviewer sign-off. For complex epic-level decisions, use ultrathink."
+  },
+  "reviewer": {
+    "extra": "Verify with the bead's target test commands. For portal/UI tasks, check the UI renders correctly. For backend tasks, verify API behavior. **RECEIPT VERIFICATION REQUIRED**: Before approving, check that implementor provided a receipt (summary of changes, files modified, tests run). Verify receipt matches actual changes with git status and git diff. No receipt = re-open with feedback. **GUARDRAILS ACTIVE**: Filesystem guardrails block git commit/push/merge/rebase - use bd close to approve, bd reopen for feedback. Reviewer role is QA-only, not implementation. See docs/agents.md 'Reviewer Guardrails' section. For complex analysis, use ultrathink."
+  },
+  "implementor_1": {
+    "label_preferences": ["site", "portal", "ux", "onboarding", "docs"],
+    "reserve_paths_hint": "apps/site/** for portal/UI tasks; docs/** for documentation tasks",
+    "test_commands": ["pnpm --filter @roundtable/site test", "pnpm --filter @roundtable/site build", "pnpm test:e2e"],
+    "extra": "CRITICAL: When implementing beads, ALWAYS start with /response-awareness \"Implement bead [id]: [title]\" - this enables metacognitive orchestration and proper skill selection. **WRITING GOOD ACCEPTANCE CRITERIA**: When creating or updating beads, write verifiable AC. Use \"Script: <command> passes\" instead of \"file exists\". Include exact file paths and actual test commands. See docs/operations/writing-good-ac.md for templates and examples. **RECEIPT REQUIRED**: When closing bead, provide a receipt summarizing: files modified, tests run with results, changes summary, and any deviations from plan. Send receipt via Agent Mail or include in bd close message. No receipt = reviewer will re-open."
+  },
+  "implementor_2": {
+    "label_preferences": ["backend", "db", "auth", "authz", "email", "api", "shared", "schema", "publish"],
+    "reserve_paths_hint": "apps/backend/** and packages/shared/** (reserve only what you touch)",
+    "test_commands": ["pnpm --filter backend test", "pnpm --filter @roundtable/shared test"],
+    "extra": "CRITICAL: When implementing beads, ALWAYS start with /response-awareness \"Implement bead [id]: [title]\" - this enables metacognitive orchestration and proper skill selection. **WRITING GOOD ACCEPTANCE CRITERIA**: When creating or updating beads, write verifiable AC. Use \"Script: <command> passes\" instead of \"file exists\". Include exact file paths and actual test commands. See docs/operations/writing-good-ac.md for templates and examples. **RECEIPT REQUIRED**: When closing bead, provide a receipt summarizing: files modified, tests run with results, changes summary, and any deviations from plan. Send receipt via Agent Mail or include in bd close message. No receipt = reviewer will re-open."
+  },
+  "guardrails": [
+    "Do not run git commit/push.",
+    "Reserve only the paths you will touch before editing (reason=<bead-id>).",
+    "TDD-first: write the failing test before implementation changes.",
+    "Portal approvals are SSR - verify server-side rendering works.",
+    "Tokens are credentials - never log them or expose in HTML/JSON.",
+    "Keep changes DRY/YAGNI; small diffs; green tests before closing the bead.",
+    "RECEIPT ENFORCEMENT: No receipt = no close. Implementors must provide receipt, reviewers must verify.",
+    "REVIEWER GUARDRAILS: Reviewer cannot git commit/push/merge/rebase - QA-only role, see docs/agents.md"
+  ]
+}

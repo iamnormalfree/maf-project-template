@@ -1,0 +1,43 @@
+{
+  "mode": "LOCAL",
+  "search_tier": "fast",
+  "storage_path": "/root/projects/roundtable/.maf/state/memory",
+  "categories": {
+    "code_changes": "Code modifications, files edited, implementations",
+    "decisions": "Architectural decisions, design choices, problem solutions",
+    "context": "Current task context, bead IDs, agent state",
+    "errors": "Bugs found, errors fixed, issues resolved",
+    "communication": "Important agent communications, decisions made"
+  },
+  "extraction_patterns": {
+    "code_changes": [
+      "edit:",
+      "create:",
+      "modify:",
+      "file:",
+      "path:",
+      ".ts",
+      ".js",
+      ".py",
+      ".json"
+    ],
+    "decisions": [
+      "decided to",
+      "will use",
+      "chose to",
+      "going to",
+      "plan to"
+    ],
+    "errors": [
+      "error:",
+      "fix:",
+      "bug:",
+      "issue:",
+      "problem:"
+    ]
+  },
+  "retention": {
+    "days": 7,
+    "max_memories_per_agent": 1000
+  }
+}

@@ -1,0 +1,568 @@
+// ABOUTME: Test suite for MAF preflight coordinator system
+// ABOUTME: Tests Python validation, MCP config validation, environment validation, and JSON output
+
+import { describe, it, expect, beforeEach, jest, afterEach } from '@jest/globals';
+import { execSync } from 'node:child_process';
+import { existsSync, readFileSync, writeFileSync, unlinkSync } from 'node:fs';
+import { join } from 'node:path';
+
+// Mock the modules before importing
+jest.mock('../evidence/collector', () => ({
+  EvidenceCollector: jest.fn().mockImplementation(() => ({
+    collectEvidence: jest.fn().mockResolvedValue({
+      metadata: { executionId: 'test-execution-id' }
+    }),
+    storeExecutionResult: jest.fn().mockResolvedValue(undefined)
+  }))
+}));
+
+jest.mock('../state/agent', () => ({
+  AgentStateManager: jest.fn().mockImplementation(() => ({
+    getAgentState: jest.fn().mockResolvedValue({ id: 'test-agent', status: 'active' }),
+    updateAgentState: jest.fn().mockResolvedValue(undefined)
+  }))
+}));
+
+// Mock crypto.randomUUID
+jest.mock('node:crypto', () => ({
+  randomUUID: jest.fn(() => 'test-uuid-12345')
+}));
+
+// Mock the runtime factory to avoid SQLite issues
+jest.mock('../core/runtime-factory', () => ({
+  createMafRuntimeStateFromEnv: jest.fn().mockResolvedValue({
+    enqueue: jest.fn().mockResolvedValue(undefined),
+    upsertHeartbeat: jest.fn().mockResolvedValue(undefined)
+  })
+}));
+
+describe('MafPreflightCoordinator', () => {
+  const testDir = '/tmp/maf-preflight-test';
+  const configDir = join(testDir, 'config');
+  const mcpConfigPath = join(configDir, 'codex.json');
+  
+  beforeEach(() => {
+    // Clear all mocks
+    jest.clearAllMocks();
+    
+    // Clean up and set up test directory
+    if (existsSync(testDir)) {
+      execSync(`rm -rf ${testDir}`, { stdio: 'ignore' });
+    }
+    execSync(`mkdir -p ${configDir}`, { stdio: 'ignore' });
+    
+    // Set up environment variables for testing
+    process.env.MAF_AGENT_MAIL_ROOT = testDir;
+    process.env.MAF_RUNTIME = 'file'; // Use file to avoid SQLite issues
+    delete process.env.MAF_DB_PATH;
+  });
+
+  afterEach(() => {
+    // Clean up test directory
+    if (existsSync(testDir)) {
+      execSync(`rm -rf ${testDir}`, { stdio: 'ignore' });
+    }
+    
+    // Reset environment variables
+    delete process.env.MAF_AGENT_MAIL_ROOT;
+    delete process.env.MAF_RUNTIME;
+    delete process.env.MAF_DB_PATH;
+  });
+
+  describe('Python Validation', () => {
+    it('should pass when Python 3.11+ is available', async () => {
+      const childProcess = require('child_process');
+      const mockExecFileSync = jest.spyOn(childProcess, 'execFileSync');
+      mockExecFileSync.mockImplementation((command: string, args?: string[]) => {
+        if (command === 'python3' && args?.includes('--version')) {
+          return 'Python 3.11.0\n';
+        }
+        if (command === 'pip' && args?.includes('--version')) {
+          return 'pip 23.0.1 from /usr/lib/python3.11/site-packages/pip (python 3.11)\n';
+        }
+        return '';
+      });
+
+      const { MafPreflightCoordinator } = await import('../preflight-coordinator');
+      const coordinator = new MafPreflightCoordinator();
+      
+      const result = await coordinator.validatePython();
+      
+      expect(result.valid).toBe(true);
+      expect(result.pythonVersion).toBe('3.11.0');
+      expect(result.pipAvailable).toBe(true);
+      expect(result.errors).toHaveLength(0);
+      
+      mockExecFileSync.mockRestore();
+      
+      // Clean up test directory
+      if (existsSync(testDir)) {
+        execSync('rm -rf ' + testDir, { stdio: 'ignore' });
+      }
+      delete process.env.MAF_AGENT_MAIL_ROOT;
+    });
+
+    it('should fail when Python version is too old (<3.8)', async () => {
+      const childProcess = require('child_process');
+      const mockExecFileSync = jest.spyOn(childProcess, 'execFileSync');
+      mockExecFileSync.mockImplementation((command: string, args?: string[]) => {
+        if (command === 'python3' && args?.includes('--version')) {
+          return 'Python 3.7.0\n';
+        }
+        if (command === 'pip' && args?.includes('--version')) {
+          return 'pip 20.0.1 from /usr/lib/python3.7/site-packages/pip (python 3.7)\n';
+        }
+        return '';
+      });
+
+      const { MafPreflightCoordinator } = await import('../preflight-coordinator');
+      const coordinator = new MafPreflightCoordinator();
+      
+      const result = await coordinator.validatePython();
+      
+      expect(result.valid).toBe(false);
+      expect(result.pythonVersion).toBe('3.7.0');
+      expect(result.errors).toContain('Python version 3.7.0 is not supported. Minimum required version is 3.8.0');
+      
+      mockExecFileSync.mockRestore();
+      
+      // Clean up test directory
+      if (existsSync(testDir)) {
+        execSync('rm -rf ' + testDir, { stdio: 'ignore' });
+      }
+      delete process.env.MAF_AGENT_MAIL_ROOT;
+    });
+
+    it('should fail when Python is not available', async () => {
+      const childProcess = require('child_process');
+      const mockExecFileSync = jest.spyOn(childProcess, 'execFileSync');
+      mockExecFileSync.mockImplementation((command: string, args?: string[]) => {
+        if (command === 'python3' && args?.includes('--version')) {
+          const error = new Error('Command failed: python3 --version');
+          (error as any).status = 127;
+          throw error;
+        }
+        return '';
+      });
+
+      const { MafPreflightCoordinator } = await import('../preflight-coordinator');
+      const coordinator = new MafPreflightCoordinator();
+      
+      const result = await coordinator.validatePython();
+      
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain('Python is not available or not in PATH');
+      
+      mockExecFileSync.mockRestore();
+      
+      // Clean up test directory
+      if (existsSync(testDir)) {
+        execSync('rm -rf ' + testDir, { stdio: 'ignore' });
+      }
+      delete process.env.MAF_AGENT_MAIL_ROOT;
+    });
+
+    it('should fail when pip is not available', async () => {
+      const childProcess = require('child_process');
+      const mockExecFileSync = jest.spyOn(childProcess, 'execFileSync');
+      mockExecFileSync.mockImplementation((command: string, args?: string[]) => {
+        if (command === 'python3' && args?.includes('--version')) {
+          return 'Python 3.11.0\n';
+        }
+        if (command === 'pip' && args?.includes('--version')) {
+          const error = new Error('Command failed: pip --version');
+          (error as any).status = 127;
+          throw error;
+        }
+        return '';
+      });
+
+      const { MafPreflightCoordinator } = await import('../preflight-coordinator');
+      const coordinator = new MafPreflightCoordinator();
+      
+      const result = await coordinator.validatePython();
+      
+      expect(result.valid).toBe(false);
+      expect(result.pythonVersion).toBe('3.11.0');
+      expect(result.pipAvailable).toBe(false);
+      expect(result.errors).toContain('pip is not available or not in PATH');
+      
+      mockExecFileSync.mockRestore();
+      
+      // Clean up test directory
+      if (existsSync(testDir)) {
+        execSync('rm -rf ' + testDir, { stdio: 'ignore' });
+      }
+      delete process.env.MAF_AGENT_MAIL_ROOT;
+    });
+
+    it('should not rely on shell execution for python or pip checks', async () => {
+      const childProcess = require('child_process');
+      const mockExecFileSync = jest.spyOn(childProcess, 'execFileSync');
+      mockExecFileSync.mockImplementation((command: string, args?: string[]) => {
+        if (command === 'python3' && args?.includes('--version')) {
+          return 'Python 3.12.0\n';
+        }
+        if (command === 'pip' && args?.includes('--version')) {
+          return 'pip 24.0 from /usr/lib/python3.12/site-packages/pip (python 3.12)\n';
+        }
+        return '';
+      });
+
+      const mockExecSync = jest.spyOn(childProcess, 'execSync');
+      mockExecSync.mockImplementation(() => {
+        throw new Error('shell is blocked');
+      });
+
+      const { MafPreflightCoordinator } = await import('../preflight-coordinator');
+      const coordinator = new MafPreflightCoordinator();
+
+      const result = await coordinator.validatePython();
+
+      expect(result.valid).toBe(true);
+      expect(result.pythonVersion).toBe('3.12.0');
+      expect(mockExecFileSync).toHaveBeenCalledTimes(2);
+      expect(mockExecSync).not.toHaveBeenCalled();
+
+      mockExecFileSync.mockRestore();
+      mockExecSync.mockRestore();
+      
+      // Clean up test directory
+      if (existsSync(testDir)) {
+        execSync('rm -rf ' + testDir, { stdio: 'ignore' });
+      }
+      delete process.env.MAF_AGENT_MAIL_ROOT;
+    });
+  });
+
+  describe('MCP Configuration Validation', () => {
+    it('should pass when all required MCP configs exist and are valid', async () => {
+      // Create valid MCP configuration files
+      const validConfig = {
+        name: 'test-config',
+        description: 'Test MCP configuration',
+        mcpServers: {
+          'test-server': {
+            command: 'python',
+            args: ['-m', 'test.server'],
+            env: {}
+          }
+        }
+      };
+
+      writeFileSync(mcpConfigPath, JSON.stringify(validConfig, null, 2));
+      writeFileSync(join(configDir, 'cursor.json'), JSON.stringify(validConfig, null, 2));
+      writeFileSync(join(configDir, 'gemini.json'), JSON.stringify(validConfig, null, 2));
+
+      const { MafPreflightCoordinator } = await import('../preflight-coordinator');
+      const coordinator = new MafPreflightCoordinator();
+      
+      const result = await coordinator.validateMcpConfigs();
+      
+      expect(result.valid).toBe(true);
+      expect(result.configurations).toHaveLength(3);
+      expect(result.errors).toHaveLength(0);
+      expect(result.configurations.some((config: any) => config.name === 'codex.json')).toBe(true);
+      expect(result.configurations.some((config: any) => config.name === 'cursor.json')).toBe(true);
+      expect(result.configurations.some((config: any) => config.name === 'gemini.json')).toBe(true);
+    });
+
+    it('should fail when required MCP config files are missing', async () => {
+      const { MafPreflightCoordinator } = await import('../preflight-coordinator');
+      const coordinator = new MafPreflightCoordinator();
+      
+      const result = await coordinator.validateMcpConfigs();
+      
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain('Required MCP configuration file not found: codex.json');
+      expect(result.errors).toContain('Required MCP configuration file not found: cursor.json');
+      expect(result.errors).toContain('Required MCP configuration file not found: gemini.json');
+    });
+
+    it('should fail when MCP config contains invalid JSON', async () => {
+      writeFileSync(mcpConfigPath, '{ invalid json }');
+
+      const { MafPreflightCoordinator } = await import('../preflight-coordinator');
+      const coordinator = new MafPreflightCoordinator();
+      
+      const result = await coordinator.validateMcpConfigs();
+      
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain('Invalid JSON in MCP configuration file: codex.json');
+    });
+
+    it('should validate MCP configuration schema', async () => {
+      const invalidConfig = {
+        name: 'test-config',
+        // Missing required 'mcpServers' field
+        description: 'Test MCP configuration'
+      };
+
+      writeFileSync(mcpConfigPath, JSON.stringify(invalidConfig, null, 2));
+
+      const { MafPreflightCoordinator } = await import('../preflight-coordinator');
+      const coordinator = new MafPreflightCoordinator();
+      
+      const result = await coordinator.validateMcpConfigs();
+      
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain('Invalid MCP configuration in codex.json: missing required field mcpServers');
+    });
+  });
+
+  describe('Environment Variable Validation', () => {
+    beforeEach(() => {
+      // Set up required environment variables
+      process.env.OPENAI_API_KEY = 'test-openai-key';
+      process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
+      process.env.MAF_AGENT_ID = 'test-agent-id';
+    });
+
+    afterEach(() => {
+      // Clean up environment variables
+      delete process.env.OPENAI_API_KEY;
+      delete process.env.ANTHROPIC_API_KEY;
+      delete process.env.MAF_AGENT_ID;
+    });
+
+    it('should pass when all required environment variables are present', async () => {
+      const { MafPreflightCoordinator } = await import('../preflight-coordinator');
+      const coordinator = new MafPreflightCoordinator();
+      
+      const result = await coordinator.validateEnvironment();
+      
+      expect(result.valid).toBe(true);
+      expect(result.errors).toHaveLength(0);
+      expect(result.environment.OPENAI_API_KEY).toBe('[REDACTED]');
+      expect(result.environment.ANTHROPIC_API_KEY).toBe('[REDACTED]');
+      expect(result.environment.MAF_AGENT_ID).toBe('[REDACTED]');
+      expect(result.required.OPENAI_API_KEY).toBe('present');
+      expect(result.required.ANTHROPIC_API_KEY).toBe('present');
+      expect(result.required.MAF_AGENT_ID).toBe('present');
+    });
+
+    it('should fail when required environment variables are missing', async () => {
+      delete process.env.OPENAI_API_KEY;
+      delete process.env.MAF_AGENT_ID;
+
+      const { MafPreflightCoordinator } = await import('../preflight-coordinator');
+      const coordinator = new MafPreflightCoordinator();
+      
+      const result = await coordinator.validateEnvironment();
+      
+      expect(result.valid).toBe(false);
+      expect(result.errors).toContain('Required environment variable missing: OPENAI_API_KEY');
+      expect(result.errors).toContain('Required environment variable missing: MAF_AGENT_ID');
+      expect(result.required.OPENAI_API_KEY).toBe('missing');
+      expect(result.required.ANTHROPIC_API_KEY).toBe('present');
+      expect(result.required.MAF_AGENT_ID).toBe('missing');
+    });
+
+    it('should validate optional environment variables', async () => {
+      process.env.GEMINI_API_KEY = 'test-gemini-key';
+      process.env.MAF_LOG_LEVEL = 'debug';
+
+      const { MafPreflightCoordinator } = await import('../preflight-coordinator');
+      const coordinator = new MafPreflightCoordinator();
+      
+      const result = await coordinator.validateEnvironment();
+      
+      expect(result.valid).toBe(true);
+      expect(result.optional.GEMINI_API_KEY).toBe('present');
+      expect(result.optional.MAF_LOG_LEVEL).toBe('debug');
+    });
+  });
+
+  describe('Complete Preflight Check', () => {
+    it('should pass all validations and return success result', async () => {
+      // Mock all validation methods to pass
+      const mockExecSync = jest.spyOn(require('child_process'), 'execSync');
+      mockExecSync.mockImplementation((command: string) => {
+        if (command.startsWith('python3 --version')) {
+          return Buffer.from('Python 3.11.0\n');
+        }
+        if (command.startsWith('pip --version')) {
+          return Buffer.from('pip 23.0.1\n');
+        }
+        return Buffer.from('');
+      });
+
+      // Set up valid environment
+      process.env.OPENAI_API_KEY = 'test-openai-key';
+      process.env.ANTHROPIC_API_KEY = 'test-anthropic-key';
+      process.env.MAF_AGENT_ID = 'test-agent-id';
+
+      // Create valid MCP configs
+      const validConfig = {
+        name: 'test-config',
+        mcpServers: {
+          'test-server': {
+            command: 'python',
+            args: ['-m', 'test.server']
+          }
+        }
+      };
+      writeFileSync(mcpConfigPath, JSON.stringify(validConfig, null, 2));
+
+      const { MafPreflightCoordinator } = await import('../preflight-coordinator');
+      const coordinator = new MafPreflightCoordinator({ agentId: 'test-agent' });
+      
+      const result = await coordinator.runPreflightCheck();
+      
+      expect(result.status).toBe('passed');
+      expect(result.validations.python.valid).toBe(true);
+      expect(result.validations.mcpConfigs.valid).toBe(true);
+      expect(result.validations.environment.valid).toBe(true);
+      expect(result.overall).toBe('passed');
+      
+      mockExecFileSync.mockRestore();
+      
+      // Clean up test directory
+      if (existsSync(testDir)) {
+        execSync('rm -rf ' + testDir, { stdio: 'ignore' });
+      }
+      delete process.env.MAF_AGENT_MAIL_ROOT;
+    });
+
+    it('should fail with comprehensive error details when validations fail', async () => {
+      // Mock Python validation to fail
+      const childProcess = require('child_process');
+      const mockExecFileSync = jest.spyOn(childProcess, 'execFileSync');
+      mockExecFileSync.mockImplementation((command: string, args?: string[]) => {
+        if (command === 'python3' && args?.includes('--version')) {
+          const error = new Error('Command failed: python3 --version');
+          (error as any).status = 127;
+          throw error;
+        }
+        return '';
+      });
+
+      // Set up incomplete environment
+      process.env.OPENAI_API_KEY = 'test-openai-key';
+      // Missing ANTHROPIC_API_KEY and MAF_AGENT_ID
+
+      const { MafPreflightCoordinator } = await import('../preflight-coordinator');
+      const coordinator = new MafPreflightCoordinator({ agentId: 'test-agent' });
+      
+      const result = await coordinator.runPreflightCheck();
+      
+      expect(result.status).toBe('failed');
+      expect(result.validations.python.valid).toBe(false);
+      expect(result.validations.mcpConfigs.valid).toBe(false);
+      expect(result.validations.environment.valid).toBe(false);
+      expect(result.validations.overall).toBe('failed');
+      expect(result.validations.errors.length).toBeGreaterThan(0);
+      
+      mockExecFileSync.mockRestore();
+      
+      // Clean up test directory
+      if (existsSync(testDir)) {
+        execSync('rm -rf ' + testDir, { stdio: 'ignore' });
+      }
+      delete process.env.MAF_AGENT_MAIL_ROOT;
+    });
+
+    it('should output machine-readable JSON format', async () => {
+      const mockExecSync = jest.spyOn(require('child_process'), 'execSync');
+      mockExecSync.mockReturnValue(Buffer.from('Python 3.11.0\n'));
+
+      const { MafPreflightCoordinator } = await import('../preflight-coordinator');
+      const coordinator = new MafPreflightCoordinator({ agentId: 'test-agent' });
+      
+      const result = await coordinator.runPreflightCheck();
+      
+      // Verify JSON structure
+      expect(typeof result.executionId).toBe('string');
+      expect(typeof result.timestamp).toBe('number');
+      expect(result.agentId).toBe('test-agent');
+      expect(result.checkType).toBe('preflight_validation');
+      expect(typeof result.validations).toBe('object');
+      expect(['passed', 'failed', 'skipped', 'timeout']).toContain(result.status);
+      
+      
+      // Clean up test directory
+      if (existsSync(testDir)) {
+        execSync('rm -rf ' + testDir, { stdio: 'ignore' });
+      }
+      delete process.env.MAF_AGENT_MAIL_ROOT;
+    });
+  });
+});
+
+// CAN-063 Compliance Tests
+describe('CAN-063 Compliance Tests', () => {
+  describe('Default Behavior Requirements', () => {
+    it('should default to full validation mode for CAN-063 compliance', async () => {
+      const { runPreflightCli } = await import('../preflight-coordinator');
+
+      // Mock console to capture output
+      const mockConsoleLog = jest.spyOn(console, 'log').mockImplementation();
+      const mockProcessExit = jest.spyOn(process, 'exit').mockImplementation();
+
+      try {
+        // Run CLI with no arguments - should perform full validation by default
+        await runPreflightCli([]);
+      } catch (error) {
+        // Expected to fail due to missing prerequisites in full validation mode
+      }
+
+      // Verify that full validation was performed, not minimal mode
+      mockConsoleLog.mockRestore();
+      mockProcessExit.mockRestore();
+
+      // This test will FAIL until we fix the default behavior
+      expect(true).toBe(false); // Explicit failure - indicates this test needs the fix
+    });
+
+    it('should exit non-zero when prerequisites are missing in default mode', async () => {
+      // Set up test environment with no prerequisites
+      const testDir = '/tmp/maf-test-' + Math.random().toString(36).substring(7);
+      process.env.MAF_AGENT_MAIL_ROOT = testDir;
+      
+      // Mock Python validation to fail
+      const childProcess = require('child_process');
+      const mockExecFileSync = jest.spyOn(childProcess, 'execFileSync');
+      mockExecFileSync.mockImplementation((command: string, args?: string[]) => {
+        if (command === 'python3' && args?.includes('--version')) {
+          const error = new Error('Command failed: python3 --version');
+          (error as any).status = 127;
+          throw error;
+        }
+        return '';
+      });
+
+      const { MafPreflightCoordinator } = await import('../preflight-coordinator');
+      const coordinator = new MafPreflightCoordinator();
+
+      // Run with default options (should be full validation for CAN-063)
+      const result = await coordinator.runPreflightCheck();
+
+      // In full validation mode, should fail when prerequisites are missing
+      expect(result.status).toBe('failed');
+      expect(result.validations.python.valid).toBe(false);
+      expect(result.validations.mcpConfigs.valid).toBe(false);
+      expect(result.validations.environment.valid).toBe(false);
+      
+      mockExecFileSync.mockRestore();
+      
+      // Clean up test directory
+      if (existsSync(testDir)) {
+        execSync('rm -rf ' + testDir, { stdio: 'ignore' });
+      }
+      delete process.env.MAF_AGENT_MAIL_ROOT;
+    });
+
+    it('should only pass in minimal mode when prerequisites are missing', async () => {
+      const { MafPreflightCoordinator } = await import('../preflight-coordinator');
+      const coordinator = new MafPreflightCoordinator();
+
+      // Explicitly run in minimal mode
+      const result = await coordinator.runPreflightCheck({ minimalMode: true });
+
+      // In minimal mode, should pass even when prerequisites are missing
+      expect(result.status).toBe('passed');
+      expect(result.validations.overall).toBe('warnings');
+      expect(result.validations.python.warnings).toContain('Using minimal mode - Python features unavailable');
+    });
+  });
+});

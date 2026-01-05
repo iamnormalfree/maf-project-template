@@ -1,0 +1,175 @@
+// ABOUTME: Tests for worker heartbeat emission and lease renewal behavior.
+// ABOUTME: Defines expected heartbeats, renewals, and cleanup for long-running tasks.
+
+import { createWorkerHeartbeatManager } from '../heartbeat-manager';
+import { createInMemoryRuntimeState, type MafRuntimeState } from '../core/runtime-state';
+import { createMafEventLogger, type MafEventLogger } from '../events/event-logger';
+import type { MafTaskClaim } from '../core/protocols';
+
+// Mock better-sqlite3 to avoid native dependency during unit tests
+jest.mock('better-sqlite3', () => ({
+  Database: jest.fn().mockImplementation(() => ({
+    prepare: jest.fn().mockReturnValue({
+      run: jest.fn(),
+      all: jest.fn().mockReturnValue([]),
+      get: jest.fn().mockReturnValue(null),
+    }),
+    close: jest.fn(),
+  })),
+}));
+
+describe('Worker Heartbeat & Lease Renewal (red spec)', () => {
+  let runtime: MafRuntimeState;
+  let eventLogger: MafEventLogger;
+  let heartbeatManager: Awaited<ReturnType<typeof createWorkerHeartbeatManager>>;
+  let mockDb: any;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+
+    mockDb = {
+      prepare: jest.fn().mockReturnValue({
+        run: jest.fn(),
+        all: jest.fn().mockReturnValue([]),
+        get: jest.fn().mockReturnValue(null),
+      }),
+      close: jest.fn(),
+    };
+
+    runtime = createInMemoryRuntimeState();
+
+    // Spy-able runtime methods for call-count assertions
+    jest.spyOn(runtime, 'upsertHeartbeat');
+    jest.spyOn(runtime, 'refresh');
+
+    eventLogger = createMafEventLogger(mockDb);
+    jest.spyOn(eventLogger, 'logAgentHealthCheck');
+  });
+
+  afterEach(async () => {
+    jest.useRealTimers();
+    jest.clearAllMocks();
+    if (heartbeatManager && heartbeatManager.isRunning()) {
+      await heartbeatManager.stop();
+    }
+  });
+
+  const makeTask = (agentId: string, beadId: string): MafTaskClaim => ({
+    type: 'TASK_CLAIM',
+    agentId,
+    beadId,
+    files: ['/tmp/file.ts'],
+    etaMinutes: 5,
+    timestamp: Date.now(),
+  });
+
+  it('emits periodic heartbeats during a long task', async () => {
+    const agentId = 'worker-heartbeat';
+    heartbeatManager = await createWorkerHeartbeatManager(agentId, runtime, eventLogger);
+
+    await heartbeatManager.start(makeTask(agentId, 'bead-heartbeat'));
+
+    // Advance one heartbeat interval (15s) — expect initial + first periodic heartbeat
+    jest.advanceTimersByTime(15_000);
+
+    // Wait for async timers to resolve
+    await Promise.resolve(); // Flush promise queue
+
+    expect(runtime.upsertHeartbeat).toHaveBeenCalledTimes(2);
+    const firstCall = (runtime.upsertHeartbeat as jest.Mock).mock.calls[0][0];
+    expect(firstCall).toMatchObject({ agentId, status: 'working' });
+
+    // Event logger should mirror heartbeat
+    expect(eventLogger.logAgentHealthCheck).toHaveBeenCalledTimes(2);
+  });
+
+  it('renews leases before expiration for long tasks', async () => {
+    const agentId = 'worker-renew';
+    heartbeatManager = await createWorkerHeartbeatManager(agentId, runtime, eventLogger);
+
+    await heartbeatManager.start(makeTask(agentId, 'bead-renew'));
+
+    // Advance one renewal interval (10s)
+    jest.advanceTimersByTime(10_000);
+
+    expect(runtime.refresh).toHaveBeenCalled();
+  });
+
+  it('sends final idle heartbeat and stops timers on completion', async () => {
+    const agentId = 'worker-complete';
+    heartbeatManager = await createWorkerHeartbeatManager(agentId, runtime, eventLogger);
+
+    await heartbeatManager.start(makeTask(agentId, 'bead-complete'));
+
+    jest.advanceTimersByTime(5_000);
+    expect(runtime.upsertHeartbeat).toHaveBeenCalled();
+
+    await heartbeatManager.stop();
+
+    const finalCall = (runtime.upsertHeartbeat as jest.Mock).mock.calls.find((call: any[]) => call[0].status === 'idle');
+    expect(finalCall).toBeDefined();
+    expect(finalCall![0]).toMatchObject({ agentId, status: 'idle' });
+
+    const callsAfterStop = (runtime.upsertHeartbeat as jest.Mock).mock.calls.length;
+    jest.advanceTimersByTime(10_000);
+    expect(runtime.upsertHeartbeat).toHaveBeenCalledTimes(callsAfterStop);
+  });
+
+  it('logs heartbeat health events with task context', async () => {
+    const agentId = 'worker-events';
+    heartbeatManager = await createWorkerHeartbeatManager(agentId, runtime, eventLogger);
+
+    await heartbeatManager.start(makeTask(agentId, 'bead-events'));
+
+    jest.advanceTimersByTime(20_000);
+
+    expect(eventLogger.logAgentHealthCheck).toHaveBeenCalled();
+    const call = (eventLogger.logAgentHealthCheck as jest.Mock).mock.calls[0][0];
+    expect(call).toMatchObject({ agent_id: agentId, status: 'healthy' });
+  });
+
+  it('allows lease expiry and reclaim after heartbeats stop', async () => {
+    const agentId = 'worker-reclaim';
+    heartbeatManager = await createWorkerHeartbeatManager(agentId, runtime, eventLogger);
+
+    await heartbeatManager.start(makeTask(agentId, 'bead-reclaim'));
+
+    jest.advanceTimersByTime(10_000);
+    expect(runtime.upsertHeartbeat).toHaveBeenCalled();
+
+    await heartbeatManager.stop();
+
+    jest.advanceTimersByTime(40_000);
+
+    expect(heartbeatManager.isRunning()).toBe(false);
+    // TODO: when renew/lease expiry logic is wired, assert scheduler can reclaim the task
+  });
+
+  it('cleans up timers on graceful stop', async () => {
+    const agentId = 'worker-cleanup';
+    heartbeatManager = await createWorkerHeartbeatManager(agentId, runtime, eventLogger);
+
+    await heartbeatManager.start(makeTask(agentId, 'bead-cleanup'));
+
+    jest.advanceTimersByTime(5_000);
+    const beforeStop = (runtime.upsertHeartbeat as jest.Mock).mock.calls.length;
+
+    await heartbeatManager.stop();
+
+    jest.advanceTimersByTime(10_000);
+    expect(runtime.upsertHeartbeat).toHaveBeenCalledTimes(beforeStop + 1); // includes final idle heartbeat
+    expect(heartbeatManager.isRunning()).toBe(false);
+  });
+
+  it('handles rapid start/stop cycles without leaking timers', async () => {
+    const agentId = 'worker-rapid';
+    heartbeatManager = await createWorkerHeartbeatManager(agentId, runtime, eventLogger);
+
+    await heartbeatManager.start(makeTask(agentId, 'bead-rapid'));
+    jest.advanceTimersByTime(2_000);
+    await heartbeatManager.stop();
+
+    expect(runtime.upsertHeartbeat).toHaveBeenCalled();
+    expect(heartbeatManager.isRunning()).toBe(false);
+  });
+});

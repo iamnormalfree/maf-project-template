@@ -1,0 +1,38 @@
+# Secrets and environment files
+.env
+.env.local
+.env.production
+.dev.vars
+secrets.json
+
+# Cloudflare Worker local development
+.wrangler/
+wrangler.toml.local
+
+# Personal notes with sensitive info
+automation/**/SECRETS.md
+automation/**/*_private.md
+
+# Backup files that might contain tokens
+*.backup
+*.bak
+*_BACKUP_*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# Node modules (if you add any)
+node_modules/
+package-lock.json
+yarn.lock
+
+# Logs that might leak info
+*.log
+npm-debug.log*

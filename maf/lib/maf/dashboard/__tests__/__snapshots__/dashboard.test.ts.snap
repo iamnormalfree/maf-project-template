@@ -1,0 +1,453 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`Dashboard System Section Generators generateAgentsSection should generate agents section with full data 1`] = `
+"## 🤖 Agents Overview
+
+*Last updated: 2023-11-11T18:40:00.000Z*
+
+### Summary
+
+| Status | Count |
+|--------|-------|
+| 🟢 Active | 1 |
+| 🟡 Idle | 1 |
+| 🔴 Error | 1 |
+| **Total** | **3** |
+
+### Agent Details
+
+#### 🟢 agent-001
+
+- **Status:** active
+- **Last Seen:** 1 minute ago
+- **Active Leases:** 3
+- **Context Usage:** 🟢 45%
+- **Task Statistics:**
+  - Total: 15
+  - Completed: 12
+  - Failed: 1
+  - Success Rate: 80.0%
+
+**Evidence:** [State snapshots](../state/)
+
+#### 🟡 agent-002
+
+- **Status:** idle
+- **Last Seen:** 5 minutes ago
+- **Active Leases:** 0
+- **Context Usage:** 🟢 23%
+- **Task Statistics:**
+  - Total: 8
+  - Completed: 8
+  - Failed: 0
+  - Success Rate: 100.0%
+
+**Evidence:** [State snapshots](../state/)
+
+#### 🔴 agent-003
+
+- **Status:** error
+- **Last Seen:** 10 minutes ago
+- **Active Leases:** 1
+- **Task Statistics:**
+  - Total: 5
+  - Completed: 2
+  - Failed: 3
+  - Success Rate: 40.0%
+
+### Health Indicators
+
+🚨 **Attention Needed:** 1 agent(s) in error state
+"
+`;
+
+exports[`Dashboard System Section Generators generateEventsSection should generate events section with full data 1`] = `
+"## 📅 System Events
+
+*Last updated: 2023-11-11T18:40:00.000Z*
+
+### Event Types (Last 50)
+
+| Type | Count |
+|------|-------|
+| 📧 message enqueued | 1 |
+| 💓 heartbeat | 1 |
+| ▶️ task started | 1 |
+| 🟢 task completed | 1 |
+| 📋 task failed | 1 |
+
+### Recent Events Timeline
+
+#### Sat Nov 11 2023
+
+- **6:39:00 PM** 📧 \`task-001\`: Message enqueued: status_update
+  _1 minute ago_
+  <details><summary>Details</summary>
+
+  \`\`\`json
+  {
+    "messageType": "status_update",
+    "agentId": "agent-001"
+  }
+  \`\`\`
+
+  </details>
+
+- **6:25:00 PM** 💓 \`task-001\`: Heartbeat from agent-001 (status: active)
+  _15 minutes ago_
+  <details><summary>Details</summary>
+
+  \`\`\`json
+  {
+    "agentId": "agent-001",
+    "status": "active"
+  }
+  \`\`\`
+
+  </details>
+
+- **6:10:00 PM** ▶️ \`task-001\`: Task started by agent-001
+  _30 minutes ago_
+  <details><summary>Details</summary>
+
+  \`\`\`json
+  {
+    "agentId": "agent-001"
+  }
+  \`\`\`
+
+  </details>
+
+- **5:40:00 PM** 🟢 \`task-002\`: Task completed successfully
+  _1 hour ago_
+  <details><summary>Details</summary>
+
+  \`\`\`json
+  {
+    "agentId": "agent-002"
+  }
+  \`\`\`
+
+  </details>
+
+- **5:40:00 PM** 📋 \`task-004\`: Task failed: Timeout exceeded
+  _1 hour ago_
+  <details><summary>Details</summary>
+
+  \`\`\`json
+  {
+    "agentId": "agent-003",
+    "error": "Timeout exceeded"
+  }
+  \`\`\`
+
+  </details>
+
+### Event Patterns
+
+🔴 **Errors:** 1 error events detected
+  - task_failed: 1
+
+### Activity Frequency
+
+- **Last hour:** 3 events
+- **Last 24 hours:** 5 events
+- **Average per hour:** 0.2
+
+### Evidence Links
+
+- **Full event logs:** [\`../logs/\`](../logs/)
+- **Task-specific evidence:** See individual task sections
+- **System state:** [\`../state/\`](../state/)
+"
+`;
+
+exports[`Dashboard System Section Generators generateEvidenceSection should generate evidence section with full data 1`] = `
+"## 🔍 Evidence & Compliance
+
+*Last updated: 2023-11-11T18:40:00.000Z*
+
+### Verification Summary
+
+| Result | Count | Percentage |
+|--------|-------|------------|
+| ✅ Pass | 2 | 66.7% |
+| ❌ Fail | 1 | 33.3% |
+| **Total** | **3** | **100%** |
+
+### Recent Verification Results
+
+#### ✅ security-scan
+
+- **Task:** \`task-003\`
+- **Attempt:** 1
+- **Result:** PASS
+- **Details:** 8 checks, 8 passed, 1 warnings
+- **Evidence:** [Task evidence](../state/task-003/)
+
+#### ❌ resource-check
+
+- **Task:** \`task-004\`
+- **Attempt:** 3
+- **Result:** FAIL
+- **Details:** 3 checks, 1 passed
+- **Evidence:** [Task evidence](../state/task-004/)
+
+#### ✅ preflight-validation
+
+- **Task:** \`task-002\`
+- **Attempt:** 1
+- **Result:** PASS
+- **Details:** 5 checks, 5 passed
+- **Evidence:** [Task evidence](../state/task-002/)
+
+### File System Artifacts
+
+#### 📝 Log Files
+
+- **Total files:** 1 of 2
+- **Total size:** 1 KB
+- **Latest file:** \`logs/agent-001.log\` (1 minute ago)
+
+- ✅ [\`logs/agent-001.log\`](../logs/agent-001.log)
+  - Size: 1 KB, Modified: 1 minute ago
+
+#### ⚙️ Config Files
+
+- **Total files:** 1 of 1
+- **Total size:** 512 B
+- **Latest file:** \`config/runtime.json\` (1 hour ago)
+
+- ✅ [\`config/runtime.json\`](../config/runtime.json)
+  - Size: 512 B, Modified: 1 hour ago
+
+#### 💾 State Files
+
+- **Total files:** 1 of 1
+- **Total size:** 2 KB
+- **Latest file:** \`state/agent-002-snapshot.json\` (5 minutes ago)
+
+- ✅ [\`state/agent-002-snapshot.json\`](../state/agent-002-snapshot.json)
+  - Size: 2 KB, Modified: 5 minutes ago
+
+#### 🔍 Evidence Files
+
+- **Total files:** 1 of 1
+- **Total size:** 768 B
+- **Latest file:** \`evidence/task-004-evidence.json\` (1 hour ago)
+
+- ✅ [\`evidence/task-004-evidence.json\`](../evidence/task-004-evidence.json)
+  - Size: 768 B, Modified: 1 hour ago
+
+### Significant Log Entries
+
+- 🔴 **1 minute ago** (task-manager):
+  Task task-004 failed: Timeout exceeded
+
+- 🟡 **2 minutes ago** (system-monitor):
+  High memory usage detected: 85%
+
+- 🔴 **4 minutes ago** (sqlite-runtime):
+  Database connection failed
+
+### Compliance Indicators
+
+❌ **Compliance Issues Found:** 1 failed verification(s)
+- \`task-004\`: resource-check
+
+### Evidence Collection Status
+
+- **Database evidence:** 3 records
+- **File artifacts:** 4 files
+- **Log entries:** 4 entries
+- **Significant events:** 3 entries
+
+### Detailed Evidence Links
+
+- **Raw logs:** [\`../logs/\`](../logs/)
+- **Configuration files:** [\`../config/\`](../config/)
+- **State snapshots:** [\`../state/\`](../state/)
+- **Test results:** [\`../test-results/\`](../test-results/)
+- **Monitoring data:** [\`../monitoring/\`](../monitoring/)
+"
+`;
+
+exports[`Dashboard System Section Generators generateSystemSection should generate system section with full data 1`] = `
+"## 🖥️ System Overview
+
+*Last updated: 2023-11-11T18:40:00.000Z*
+
+### System Health: 🟢 HEALTHY
+
+✅ **System operating normally**
+
+### Core Metrics
+
+| Metric | Value | Status |
+|--------|-------|--------|
+| **Total Tasks** | 25 | 🟢 |
+| **Active Tasks** | 3 | 🟢 |
+| **Completed Tasks** | 20 | 🟢 |
+| **Failed Tasks** | 2 | 🟢 |
+| **Active Leases** | 3 | 🟢 |
+| **Total Events** | 150 | 🟢 |
+| **Total Evidence** | 18 | 🟢 |
+
+### Performance Metrics
+
+- **Task Completion Rate:** 80.0%
+- **Task Failure Rate:** 8.0%
+- **Active Task Ratio:** 12.0%
+- **Oldest Active Task:** 60 minutes old
+- **Newest Task:** 1 minutes old
+
+### File System Status
+
+- **Total Files:** 15
+- **Total Disk Usage:** 1 MB
+
+#### Files by Type
+
+- 📝 log: 8 files
+- ⚙️ config: 3 files
+- 💾 state: 2 files
+- 🔍 evidence: 2 files
+
+#### Largest Files
+
+- 📝 [\`logs/agent-001.log\`](../logs/agent-001.log): 512 KB
+- 💾 [\`state/agent-001-snapshot.json\`](../state/agent-001-snapshot.json): 256 KB
+- 🔍 [\`evidence/task-004-evidence.json\`](../evidence/task-004-evidence.json): 128 KB
+
+### Configuration Status
+
+- **Valid configs:** 2/3
+- **Missing configs:** 1 files
+  - ❌ \`missing.json\`
+
+#### Recent Configuration Changes
+
+- [\`runtime.json\`](../config/runtime.json) - updated 1 hour ago
+- [\`agents.json\`](../config/agents.json) - updated 2 hours ago
+
+### Resource Utilization
+
+### Recommendations
+
+- ⚙️ **Complete configuration:** Add missing config files for full functionality
+
+### System Information
+
+- **Database:** SQLite runtime at \`.maf/runtime.db\`
+- **Configuration:** [\`../config/\`](../config/) directory
+- **Logs:** [\`../logs/\`](../logs/) directory
+- **State:** [\`../state/\`](../state/) directory
+- **Evidence:** Available throughout dashboard sections
+"
+`;
+
+exports[`Dashboard System Section Generators generateTasksSection should generate tasks section with full data 1`] = `
+"## 📋 Tasks Overview
+
+*Last updated: 2023-11-11T18:40:00.000Z*
+
+### Task Status Summary
+
+| Status | Count | Percentage |
+|--------|-------|------------|
+| 🔵 RUNNING | 1 | 25.0% |
+| ✅ DONE | 1 | 25.0% |
+| ⚪ READY | 1 | 25.0% |
+| 💀 DEAD | 1 | 25.0% |
+| **Total** | **4** | **100%** |
+
+### Recent Activity
+
+- 📝 **1 minute ago**: Message enqueued: status_update
+- 💓 **15 minutes ago**: Heartbeat from agent-001 (status: active)
+- ▶️ **30 minutes ago**: Task started by agent-001
+- ✅ **1 hour ago**: Task completed successfully
+- 📝 **1 hour ago**: Task failed: Timeout exceeded
+
+### Active Tasks
+
+#### 🔵 task-001
+
+- **State:** RUNNING
+- **Priority:** 100
+- **Created:** 1 hour ago (60 minutes ago)
+- **Attempts:** 2
+- **Agent:** agent-001
+- **Duration:** 30m 0s
+- **Policy:** private
+
+#### ⚪ task-003
+
+- **State:** READY
+- **Priority:** 50
+- **Created:** 30 minutes ago (30 minutes ago)
+- **Attempts:** 0
+- **Policy:** private
+
+### 🚨 Tasks Needing Attention
+
+- 💀 **task-004**: DEAD (5 attempts)
+
+### Performance Metrics
+
+- **Average attempts per completed task:** 1.0
+- **Failure rate:** 25.0%
+- **High priority tasks (90+):** 1
+"
+`;
+
+exports[`Dashboard System Security Section should generate security section with full data 1`] = `
+"## 🔒 Security Overview
+
+*Last updated: 2023-11-11T18:40:00.000Z*
+
+### Security Health: 🟢 HEALTHY
+
+✅ **Security posture is healthy**
+
+### Security Metrics
+
+| Metric | Value | Status |
+|--------|-------|--------|
+| **Policy Valid** | ✅ Valid | 🟢 |
+| **Current Profile** | standard | 🟡 |
+| **Allowed Domains** | 3 | 🟡 |
+| **Recent Violations** | 2 (24h) | 🟡 |
+| **Isolation Effectiveness** | 90% | 🟡 |
+| **Performance Impact** | 3% | 🟢 |
+| **Boundary Test Status** | passed | 🟢 |
+
+### Security Controls Status
+
+- **Security Policy:** ✅ Valid (\`policy.json\`)
+- **Domain Allowlist:** ✅ Active (3 domains)
+- **Boundary Testing:** ✅ Passed (Last: 7 hours ago)
+
+### Recent Security Violations
+
+- **domain_blocked** - 1 hour ago | Domain not in allowlist
+- **policy_validation_failed** - 2 hours ago
+
+### Security Trends
+
+- **11/10/2023:** 0 violations, 95% effectiveness 🟢
+- **11/11/2023:** 1 violations, 93% effectiveness 🟡
+- **11/11/2023:** 2 violations, 90% effectiveness 🟡
+
+### Security Recommendations
+
+✅ No immediate security actions required
+
+### Security Information
+
+- **Security Policy:** [\`../policy/policy.json\`](../lib/maf/policy/policy.json)
+- **Domain Allowlist:** [\`../security/domain-allowlist.json\`](../lib/maf/security/domain-allowlist.json)
+- **Audit Log:** [\`../logs/security-admin.log\`](../runtime/logs/security-admin.log)
+- **Security Admin:** \`./scripts/maf/security-admin.sh\`
+"
+`;

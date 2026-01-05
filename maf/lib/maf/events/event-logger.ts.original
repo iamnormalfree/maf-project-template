@@ -1,0 +1,125 @@
+// ABOUTME: Provides SQLite-first event logging with typed events for MAF task lifecycle tracking.
+// ABOUTME: Implements CLAIMED, RUNNING, VERIFYING, COMMITTED, and ERROR event types.
+
+// Note: better-sqlite3 types omitted to avoid build-time dependency issues
+
+export interface MafTaskEvent {
+  id: number;
+  task_id: string;
+  ts: number;
+  kind: MafEventKind;
+  data_json: string;
+}
+
+export type MafEventKind = 'CLAIMED' | 'RUNNING' | 'VERIFYING' | 'COMMITTED' | 'ERROR';
+
+export interface MafEventClaimedData {
+  agent_id: string;
+  attempt: number;
+}
+
+export interface MafEventErrorData {
+  error: {
+    message: string;
+    name: string;
+    stack?: string;
+  };
+  context?: Record<string, any>;
+}
+
+export type MafEventData = 
+  | MafEventClaimedData
+  | Record<string, never> // For RUNNING, VERIFYING, COMMITTED with empty data
+  | MafEventErrorData;
+
+export interface MafEventLogger {
+  logTaskClaimed(taskId: string, agentId: string, attempt: number): void;
+  logTaskRunning(taskId: string): void;
+  logTaskVerifying(taskId: string): void;
+  logTaskCommitted(taskId: string): void;
+  logTaskError(taskId: string, error: Error, context?: Record<string, any>): void;
+  getTaskEvents(taskId: string): MafTaskEvent[];
+}
+
+export function createMafEventLogger(db: any): MafEventLogger {
+  const insertEventStmt = db.prepare(`
+    INSERT INTO events(task_id, ts, kind, data_json) 
+    VALUES(?, ?, ?, ?)
+  `);
+
+  const getEventsStmt = db.prepare(`
+    SELECT * FROM events 
+    WHERE task_id = ? 
+    ORDER BY ts ASC
+  `);
+
+  return {
+    logTaskClaimed(taskId: string, agentId: string, attempt: number): void {
+      const data: MafEventClaimedData = { agent_id: agentId, attempt };
+      const ts = Date.now();
+      
+      insertEventStmt.run(
+        taskId,
+        ts,
+        'CLAIMED',
+        JSON.stringify(data)
+      );
+    },
+
+    logTaskRunning(taskId: string): void {
+      const ts = Date.now();
+      
+      insertEventStmt.run(
+        taskId,
+        ts,
+        'RUNNING',
+        '{}'
+      );
+    },
+
+    logTaskVerifying(taskId: string): void {
+      const ts = Date.now();
+      
+      insertEventStmt.run(
+        taskId,
+        ts,
+        'VERIFYING',
+        '{}'
+      );
+    },
+
+    logTaskCommitted(taskId: string): void {
+      const ts = Date.now();
+      
+      insertEventStmt.run(
+        taskId,
+        ts,
+        'COMMITTED',
+        '{}'
+      );
+    },
+
+    logTaskError(taskId: string, error: Error, context?: Record<string, any>): void {
+      const data: MafEventErrorData = {
+        error: {
+          message: error.message,
+          name: error.name,
+          stack: error.stack
+        },
+        context
+      };
+      const ts = Date.now();
+      
+      insertEventStmt.run(
+        taskId,
+        ts,
+        'ERROR',
+        JSON.stringify(data)
+      );
+    },
+
+    getTaskEvents(taskId: string): MafTaskEvent[] {
+      return getEventsStmt.all(taskId) as MafTaskEvent[];
+    }
+  };
+}

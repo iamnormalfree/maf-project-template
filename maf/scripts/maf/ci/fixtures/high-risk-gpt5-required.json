@@ -1,0 +1,57 @@
+{
+  "taskId": "CAN-065-high-risk-calculation",
+  "tier": "FULL",
+  "risk": "HIGH",
+  "tier1Files": [
+    "lib/instant-profile.ts",
+    "lib/tdsr-calculator.ts",
+    "lib/property-valuation.ts"
+  ],
+  "codex": {
+    "issues": 8,
+    "blocking": 0,
+    "notes": [
+      "Update TDSR calculation for new policy rules",
+      "Add comprehensive error handling",
+      "Document calculation methodology",
+      "Add unit tests for edge cases",
+      "Review rounding precision per Dr Elena v2",
+      "Update API contracts for new fields",
+      "Add validation for input parameters",
+      "Consider performance optimizations"
+    ]
+  },
+  "gpt5": {
+    "issues": 4,
+    "blocking": 0,
+    "notes": [
+      "Calculation changes require regulatory validation",
+      "Update runbooks for new calculation patterns",
+      "Add comprehensive integration tests",
+      "Document migration path for existing data"
+    ]
+  },
+  "evidence": [
+    {
+      "type": "test_result",
+      "status": "passing",
+      "details": "All tests passing including new calculation tests (52/52)"
+    },
+    {
+      "type": "regulatory_review",
+      "status": "pending",
+      "details": "Dr Elena v2 compliance review scheduled"
+    },
+    {
+      "type": "code_review",
+      "reviewer": "codex",
+      "timestamp": "2025-01-13T08:00:00Z"
+    },
+    {
+      "type": "code_review",
+      "reviewer": "gpt5",
+      "timestamp": "2025-01-13T08:30:00Z"
+    }
+  ],
+  "reviewCycles": 2
+}

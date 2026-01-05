@@ -1,0 +1,27 @@
+{
+  "taskId": "CAN-065-basic-approval",
+  "tier": "MEDIUM",
+  "risk": "LOW",
+  "tier1Files": [],
+  "codex": {
+    "issues": 2,
+    "blocking": 0,
+    "notes": [
+      "Minor naming inconsistency in variable names",
+      "Add missing JSDoc comment for export function"
+    ]
+  },
+  "evidence": [
+    {
+      "type": "test_result",
+      "status": "passing",
+      "details": "All unit tests passing (47/47)"
+    },
+    {
+      "type": "code_review",
+      "reviewer": "codex",
+      "timestamp": "2025-01-13T10:30:00Z"
+    }
+  ],
+  "reviewCycles": 1
+}

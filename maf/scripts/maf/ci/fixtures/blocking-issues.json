@@ -1,0 +1,23 @@
+{
+  "taskId": "CAN-065-blocking-issues",
+  "tier": "MEDIUM",
+  "risk": "LOW",
+  "tier1Files": [],
+  "codex": {
+    "issues": 3,
+    "blocking": 2,
+    "notes": [
+      "BREAKING: API endpoint returns different format",
+      "CRITICAL: Missing authentication check on sensitive operation",
+      "Minor: Update documentation for new parameter"
+    ]
+  },
+  "evidence": [
+    {
+      "type": "test_result",
+      "status": "failing",
+      "details": "2 integration tests failing due to API contract changes"
+    }
+  ],
+  "reviewCycles": 1
+}

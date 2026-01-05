@@ -1,0 +1,35 @@
+{
+  "id": "roundtable-private-circles",
+  "title": "Production private circles: invite-only + portal + explicit public notes",
+  "id_prefixes": ["roundtable-private-circles."],
+  "base_prefix": "Active plan: roundtable-private-circles (production private circles). Start by checking Agent Mail and any pending /unblock actions.",
+  "supervisor": {
+    "extra": "Keep everyone on the epic (roundtable-private-circles.*). Prefer /broadcast-targeted (draft). Close beads only after reviewer sign-off. For complex epic-level decisions, use ultrathink."
+  },
+  "reviewer": {
+    "extra": "Verify with the bead's target test commands and re-open with concrete diffs if needed. **RECEIPT VERIFICATION REQUIRED**: Before approving, check that implementor provided a receipt (summary of changes, files modified, tests run). Verify receipt matches actual changes with git status and git diff. No receipt = re-open with feedback. **GUARDRAILS ACTIVE**: Filesystem guardrails block git commit/push/merge/rebase - use bd close to approve, bd reopen for feedback. Reviewer role is QA-only, not implementation. See docs/agents.md 'Reviewer Guardrails' section. For complex analysis, use ultrathink."
+  },
+  "implementor_1": {
+    "label_preferences": ["docs", "ops", "onboarding", "ux"],
+    "reserve_paths_hint": "docs/** and scripts/** (and apps/site/** only if a task explicitly touches the public site)",
+    "test_commands": ["pnpm --filter @roundtable/site test", "pnpm --filter @roundtable/site build"],
+    "extra": "CRITICAL: When implementing beads, ALWAYS start with /response-awareness \"Implement bead [id]: [title]\" - this enables metacognitive orchestration and proper skill selection. **WRITING GOOD ACCEPTANCE CRITERIA**: When creating or updating beads, write verifiable AC. Use \"Script: <command> passes\" instead of \"file exists\". Include exact file paths and actual test commands. See docs/operations/writing-good-ac.md for templates and examples. **RECEIPT REQUIRED**: When closing bead, provide a receipt summarizing: files modified, tests run with results, changes summary, and any deviations from plan. Send receipt via Agent Mail or include in bd close message. No receipt = reviewer will re-open."
+  },
+  "implementor_2": {
+    "label_preferences": ["backend", "db", "auth", "authz", "email", "security", "publish", "api", "onboarding", "schema", "shared"],
+    "reserve_paths_hint": "apps/backend/** (and packages/shared/** only if you touch shared schemas)",
+    "test_commands": ["pnpm --filter backend test", "pnpm --filter backend test:e2e", "pnpm --filter @roundtable/shared test"],
+    "extra": "CRITICAL: When implementing beads, ALWAYS start with /response-awareness \"Implement bead [id]: [title]\" - this enables metacognitive orchestration and proper skill selection. **WRITING GOOD ACCEPTANCE CRITERIA**: When creating or updating beads, write verifiable AC. Use \"Script: <command> passes\" instead of \"file exists\". Include exact file paths and actual test commands. See docs/operations/writing-good-ac.md for templates and examples. **RECEIPT REQUIRED**: When closing bead, provide a receipt summarizing: files modified, tests run with results, changes summary, and any deviations from plan. Send receipt via Agent Mail or include in bd close message. No receipt = reviewer will re-open."
+  },
+  "guardrails": [
+    "Do not run git commit/push.",
+    "Reserve only the paths you will touch before editing (reason=<bead-id>).",
+    "TDD-first: write the failing test before implementation changes.",
+    "No security-by-URL: real circles/rooms are always private to invited members; only explicitly published notes are public.",
+    "Do not log or expose tokens (invite/session/approval/submission/login) or raw email content.",
+    "Keep changes DRY/YAGNI; small diffs; green tests before closing the bead.",
+    "RECEIPT ENFORCEMENT: No receipt = no close. Implementors must provide receipt, reviewers must verify.",
+    "REVIEWER GUARDRAILS: Reviewer cannot git commit/push/merge/rebase - QA-only role, see docs/agents.md"
+  ]
+}
+

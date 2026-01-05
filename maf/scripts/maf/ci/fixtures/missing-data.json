@@ -1,0 +1,13 @@
+{
+  "taskId": "CAN-065-missing-data",
+  "tier": "LIGHT",
+  "risk": "LOW",
+  "tier1Files": [],
+  "evidence": [
+    {
+      "type": "test_result",
+      "status": "passing",
+      "details": "All tests passing (25/25)"
+    }
+  ]
+}

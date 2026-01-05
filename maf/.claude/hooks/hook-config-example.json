@@ -1,0 +1,51 @@
+{
+  "_comment": "Add this configuration to your .claude/settings.json",
+  "_comment2": "This enables the Orchestrator Firewall Hook for response-awareness framework",
+
+  "hooks": {
+    "_comment_hooks": "Hooks that fire before tool usage to enforce orchestrator rules",
+
+    "before_tool_use": {
+      "_comment_before": "Fires BEFORE Edit/Write/NotebookEdit to check orchestrator status",
+
+      "Edit": {
+        "command": ".claude/hooks/orchestrator-firewall.py",
+        "description": "Prevents orchestrators from implementing directly (Edit tool)",
+        "enabled": true
+      },
+
+      "Write": {
+        "command": ".claude/hooks/orchestrator-firewall.py",
+        "description": "Prevents orchestrators from implementing directly (Write tool)",
+        "enabled": true
+      },
+
+      "NotebookEdit": {
+        "command": ".claude/hooks/orchestrator-firewall.py",
+        "description": "Prevents orchestrators from implementing directly (NotebookEdit tool)",
+        "enabled": true
+      }
+    }
+  },
+
+  "_example_usage": {
+    "_description": "To integrate this hook into your existing settings.json:",
+    "_step1": "Copy the 'hooks' section above",
+    "_step2": "Merge it with your existing .claude/settings.json",
+    "_step3": "If you already have a hooks section, merge the before_tool_use entries",
+    "_step4": "Ensure the path to orchestrator-firewall.py is correct for your system"
+  },
+
+  "_customization": {
+    "_disable_temporarily": "Set 'enabled': false to disable the hook without removing it",
+    "_debug_mode": "Set environment variable DEBUG_FIREWALL=1 to see diagnostic info",
+    "_windows_users": "Use .claude/hooks/orchestrator-firewall.bat instead",
+    "_unix_users": "Use .claude/hooks/orchestrator-firewall.sh or .py directly"
+  },
+
+  "_platform_specific_commands": {
+    "windows": ".claude/hooks/orchestrator-firewall.bat",
+    "unix_linux_macos": ".claude/hooks/orchestrator-firewall.sh",
+    "direct_python": ".claude/hooks/orchestrator-firewall.py"
+  }
+}

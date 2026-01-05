@@ -1,0 +1,134 @@
+{
+  "monitoring": {
+    "enabled": true,
+    "health_check_interval_seconds": 30,
+    "resource_monitoring_interval_seconds": 60,
+    "log_collection_interval_seconds": 15,
+    "max_log_file_size_mb": 50,
+    "log_retention_days": 7,
+    "alert_thresholds": {
+      "cpu_usage_percent": 80,
+      "memory_usage_percent": 85,
+      "disk_space_percent": 90,
+      "agent_response_timeout_seconds": 120,
+      "session_stale_minutes": 30,
+      "error_rate_threshold": 5
+    },
+    "codex_quota": {
+      "enabled": true,
+      "status_update_interval_seconds": 30,
+      "alert_check_interval_seconds": 60,
+      "health_check_interval_seconds": 120,
+      "quota_thresholds": {
+        "warning_percent": 50,
+        "critical_percent": 90,
+        "emergency_percent": 95
+      },
+      "profile_rotation": {
+        "auto_rotation_enabled": true,
+        "rotation_threshold_percent": 80,
+        "minimum_rotation_interval_minutes": 30,
+        "fallback_profile_available": true
+      },
+      "ra_reminders": {
+        "enabled": true,
+        "check_interval_minutes": 15,
+        "reminder_delay_minutes": 30,
+        "max_reminders_per_hour": 3,
+        "bead_id_patterns": [
+          "bead-[a-zA-Z0-9_-]+",
+          "[a-zA-Z0-9_-]+-\\d{3}",
+          "task-[a-zA-Z0-9_-]+"
+        ],
+        "integration": {
+          "agent_mail_enabled": true,
+          "console_fallback": true,
+          "template_directory": "mcp_agent_mail/src/mcp_agent_mail/templates",
+          "outbox_directory": ".agent-mail/outbox"
+        }
+      }
+    },
+    "telegram": {
+      "enabled": true,
+      "default_level": "critical",
+      "rate_limit": {
+        "max_messages_per_hour": 10,
+        "cooldown_seconds": 300,
+        "bypass_for_critical": true
+      },
+      "retry": {
+        "max_attempts": 3,
+        "base_delay_ms": 1000,
+        "max_delay_ms": 30000
+      },
+      "formatting": {
+        "enable_markdown": true,
+        "max_message_length": 4000,
+        "truncate_long_messages": true
+      },
+      "fallback": {
+        "console": true,
+        "log_file": true,
+        "log_file_location": ".maf/logs/telegram-fallback.log"
+      },
+      "integration": {
+        "quota_alerts": true,
+        "health_alerts": true,
+        "agent_error_alerts": true,
+        "resource_alerts": true,
+        "system_alerts": true
+      }
+    }
+  },
+  "logging": {
+    "level": "info",
+    "structured_format": true,
+    "include_timestamps": true,
+    "include_agent_context": true,
+    "compression_enabled": true,
+    "centralized_logs": true,
+    "per_agent_logs": true,
+    "session_logs": true,
+    "system_logs": true
+  },
+  "health_checks": {
+    "agent_connectivity": true,
+    "session_integrity": true,
+    "resource_utilization": true,
+    "disk_space_check": true,
+    "process_monitoring": true,
+    "network_connectivity": true,
+    "git_repository_health": true,
+    "maf_cli_functionality": true,
+    "agent_mail_system": true,
+    "beads_workflow_status": true
+  },
+  "alerts": {
+    "email_enabled": false,
+    "webhook_enabled": false,
+    "console_output": true,
+    "log_file_alerts": true,
+    "agent_notifications": true,
+    "telegram_enabled": true,
+    "severity_levels": [
+      "critical",
+      "warning",
+      "info"
+    ]
+  },
+  "integration": {
+    "agent_mail_directory": ".agent-mail",
+    "maf_logs_directory": ".maf/logs",
+    "monitoring_data_directory": ".maf/monitoring",
+    "health_status_file": "health-status.json",
+    "metrics_file": "metrics.json",
+    "alerts_file": "alerts.json"
+  },
+  "performance": {
+    "metrics_history_hours": 24,
+    "aggregation_interval_minutes": 5,
+    "performance_baseline_enabled": true,
+    "anomaly_detection": true,
+    "trend_analysis": true
+  }
+}

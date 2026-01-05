@@ -1,0 +1,44 @@
+{
+  "taskId": "CAN-065-escalation-demo",
+  "tier": "HEAVY",
+  "risk": "MEDIUM",
+  "tier1Files": ["lib/maf/core/coordinator.ts"],
+  "codex": {
+    "issues": 5,
+    "blocking": 0,
+    "notes": [
+      "Complex nested logic could be simplified",
+      "Consider extracting validation logic to separate module",
+      "Add error handling for edge cases",
+      "Update unit tests for new functionality",
+      "Document API contract changes"
+    ]
+  },
+  "gpt5": {
+    "issues": 3,
+    "blocking": 0,
+    "notes": [
+      "Architecture change requires careful migration path",
+      "Performance implications need benchmarking",
+      "Update dependent runbooks for new patterns"
+    ]
+  },
+  "evidence": [
+    {
+      "type": "test_result",
+      "status": "passing",
+      "details": "All tests passing (46/46)"
+    },
+    {
+      "type": "code_review",
+      "reviewer": "codex",
+      "timestamp": "2025-01-13T09:15:00Z"
+    },
+    {
+      "type": "code_review",
+      "reviewer": "gpt5",
+      "timestamp": "2025-01-13T09:45:00Z"
+    }
+  ],
+  "reviewCycles": 3
+}

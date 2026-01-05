@@ -1,0 +1,527 @@
+{
+  "ABOUTME": [
+    "Deny-by-default data routing matrix for providers.",
+    "Used to gate provider selection at run time.",
+    "Extended with security policies for worker isolation."
+  ],
+  "labels": {
+    "private": {
+      "allow": [
+        "local"
+      ],
+      "deny": [
+        "claude_api",
+        "codex_api",
+        "kimi_api"
+      ]
+    },
+    "sensitive": {
+      "allow": [
+        "local",
+        "claude_cli"
+      ],
+      "deny": [
+        "codex_api",
+        "kimi_api"
+      ]
+    },
+    "export_ok": {
+      "allow": [
+        "local",
+        "claude_api",
+        "codex_api",
+        "kimi_api"
+      ],
+      "deny": []
+    }
+  },
+  "security": {
+    "default_profile": "restricted",
+    "operational_limits": {
+      "max_concurrent_agents": 4,
+      "max_concurrent_tasks": 4,
+      "max_system_memory_percent": 60,
+      "security_overhead_budget_percent": 15,
+      "cpx42_optimization": {
+        "server_ram_gb": 16,
+        "server_vcpu": 8,
+        "conservative_allocation": true,
+        "headroom_percent": 40
+      }
+    },
+    "profiles": {
+      "restricted": {
+        "network": {
+          "outbound_allowed": true,
+          "allowed_hosts": [
+            "api.github.com",
+            "registry.npmjs.org"
+          ],
+          "allowed_ports": [
+            443,
+            80
+          ],
+          "dns_resolution": true,
+          "proxychains_mode": "monitoring_only",
+          "log_all_connections": true,
+          "block_suspicious_patterns": true
+        },
+        "filesystem": {
+          "read_allowed": [
+            "/tmp/maf-*",
+            "/dev/null"
+          ],
+          "write_allowed": [
+            "/tmp/maf-*"
+          ],
+          "exec_allowed": [],
+          "temp_dir": "/tmp/maf-${task_id}"
+        },
+        "resources": {
+          "max_memory_mb": 512,
+          "max_cpu_percent": 50,
+          "max_execution_time_sec": 300,
+          "max_processes": 1
+        },
+        "tools": {
+          "allowed_commands": [
+            "node",
+            "npm",
+            "git",
+            "echo",
+            "cat",
+            "ls",
+            "grep",
+            "find",
+            "head",
+            "tail",
+            "wc",
+            "sort",
+            "uniq",
+            "mkdir",
+            "rm",
+            "cp",
+            "mv",
+            "stat",
+            "du",
+            "df",
+            "ps",
+            "top",
+            "kill",
+            "killall",
+            "pkill",
+            "pgrep",
+            "tar",
+            "gzip",
+            "gunzip",
+            "zip",
+            "unzip",
+            "curl",
+            "wget",
+            "python",
+            "python3",
+            "pip",
+            "pip3",
+            "apt-get",
+            "yum",
+            "dnf",
+            "apk",
+            "docker",
+            "docker-compose",
+            "kubectl"
+          ],
+          "blocked_patterns": [
+            "rm -rf",
+            "sudo",
+            "chmod 777",
+            "curl",
+            "wget",
+            "su",
+            "doas",
+            "pkexec",
+            "runuser",
+            "chmod 4755",
+            "chmod +s",
+            "chown",
+            "chgrp",
+            "setfacl",
+            "getfacl",
+            "mount",
+            "umount",
+            "systemctl",
+            "service",
+            "init ",
+            "shutdown ",
+            "reboot ",
+            "halt ",
+            "poweroff ",
+            "exec(",
+            "system(",
+            "shell_exec(",
+            "eval(",
+            "Function(",
+            "require(\"child_process\")",
+            "subprocess.run",
+            "os.system",
+            "/bin/",
+            "/usr/bin/",
+            "/sbin/",
+            "/usr/sbin/",
+            "<<<",
+            ">>",
+            "<",
+            "`",
+            "$(",
+            "${"
+          ],
+          "shell_access": false,
+          "environment_variables": {
+            "allowed": [
+              "PATH",
+              "HOME",
+              "TMPDIR",
+              "NODE_ENV"
+            ],
+            "blocked": [
+              "*_KEY",
+              "*_TOKEN",
+              "*_SECRET",
+              "*PASSWORD",
+              "API_*",
+              "AUTH_*"
+            ]
+          }
+        },
+        "boundary_verification": {
+          "required_effectiveness": 90,
+          "fail_on_violation": true,
+          "test_frequency": "once_per_task",
+          "monitoring_enabled": true
+        },
+        "network_monitoring": {
+          "connection_state_tracking": {
+            "enabled": true,
+            "tracking_intensity": "restricted",
+            "max_connections_tracked": 1000,
+            "connection_retention_seconds": 300,
+            "memory_budget_mb": 15,
+            "track_suspicious_connections": true,
+            "log_connection_state_changes": true
+          },
+          "bandwidth_monitoring": {
+            "enabled": true,
+            "daily_bandwidth_limit_mb": 1000,
+            "real_time_rate_limiting": true,
+            "rate_limiting_strategy": "adaptive",
+            "bandwidth_alerts": {
+              "enabled": true,
+              "threshold_percentage": 80,
+              "alert_on_exceeded": true,
+              "auto_enforce_limits": true
+            },
+            "quota_management": {
+              "reset_policy": "daily",
+              "grace_period_minutes": 30,
+              "burst_allowance_percentage": 20
+            }
+          },
+          "live_traffic_analysis": {
+            "enabled": false,
+            "behavioral_pattern_detection": false,
+            "analysis_depth": "minimal",
+            "ml_ready_framework": false,
+            "pattern_policies": {
+              "allowed_patterns": ["normal_web_traffic"],
+              "blocked_patterns": [],
+              "alert_patterns": [],
+              "actions": {
+                "suspicious": "log",
+                "malicious": "log",
+                "unknown": "log"
+              }
+            },
+            "anomaly_detection": {
+              "enable_baseline_learning": false,
+              "baseline_learning_period_minutes": 0,
+              "sensitivity_level": "low",
+              "false_positive_reduction": false
+            }
+          },
+          "protocol_analysis": {
+            "enabled": true,
+            "layered_inspection": {
+              "http_analysis": {
+                "enabled": true,
+                "inspection_depth": "headers",
+                "max_header_size_kb": 8,
+                "allowed_methods": ["GET", "POST", "HEAD", "OPTIONS"],
+                "blocked_headers": ["x-forwarded-for", "x-real-ip", "authorization"]
+              },
+              "dns_analysis": {
+                "enabled": true,
+                "monitor_query_types": true,
+                "detect_dnstunneling": true,
+                "max_query_length": 150,
+                "blocked_domains": [],
+                "whitelisted_domains": ["api.github.com", "registry.npmjs.org"]
+              },
+              "tls_analysis": {
+                "enabled": false,
+                "certificate_validation": "basic",
+                "inspect_sni": false,
+                "allowed_cipher_suites": ["TLS_AES_128_GCM_SHA256", "TLS_AES_256_GCM_SHA384"],
+                "block_weak_ciphers": false
+              }
+            },
+            "signature_based_analysis": {
+              "enabled": false,
+              "update_signatures_automatically": false,
+              "signature_update_interval_hours": 24,
+              "custom_signatures": [],
+              "severity_threshold": "medium"
+            },
+            "feature_flags": {
+              "gradual_rollout": false,
+              "rollout_percentage": 50,
+              "canary_testing": false,
+              "performance_monitoring": true
+            }
+          }
+        }
+      },
+      "standard": {
+        "network": {
+          "outbound_allowed": true,
+          "allowed_hosts": [
+            "api.github.com",
+            "registry.npmjs.org"
+          ],
+          "allowed_ports": [
+            443,
+            80
+          ],
+          "dns_resolution": true
+        },
+        "filesystem": {
+          "read_allowed": [
+            "/tmp/maf-*",
+            "/dev/null",
+            "/usr/bin"
+          ],
+          "write_allowed": [
+            "/tmp/maf-*"
+          ],
+          "exec_allowed": [
+            "/tmp/maf-*",
+            "/usr/bin/git",
+            "/usr/bin/node"
+          ],
+          "temp_dir": "/tmp/maf-${task_id}"
+        },
+        "resources": {
+          "max_memory_mb": 1024,
+          "max_cpu_percent": 75,
+          "max_execution_time_sec": 600,
+          "max_processes": 3
+        },
+        "tools": {
+          "allowed_commands": [
+            "node",
+            "npm",
+            "git",
+            "curl",
+            "wget"
+          ],
+          "blocked_patterns": [
+            "rm -rf /",
+            "sudo",
+            "chmod 777 /",
+            "rm -rf",
+            "su",
+            "doas",
+            "pkexec",
+            "runuser",
+            "chmod 777",
+            "chmod 4755",
+            "chmod +s",
+            "chown",
+            "chgrp",
+            "setfacl",
+            "getfacl",
+            "mount",
+            "umount",
+            "systemctl",
+            "service",
+            "init ",
+            "shutdown ",
+            "reboot ",
+            "halt ",
+            "poweroff ",
+            "exec(",
+            "system(",
+            "shell_exec(",
+            "eval(",
+            "Function(",
+            "require(\"child_process\")",
+            "subprocess.run",
+            "os.system",
+            "/bin/",
+            "/usr/bin/",
+            "/sbin/",
+            "/usr/sbin/",
+            "<<<",
+            ">>",
+            "<",
+            "`",
+            "$(",
+            "${"
+          ],
+          "shell_access": true,
+          "environment_variables": {
+            "allowed": [
+              "PATH",
+              "HOME",
+              "TMPDIR",
+              "NODE_ENV",
+              "HTTP_PROXY",
+              "HTTPS_PROXY"
+            ],
+            "blocked": [
+              "*",
+              "PRIVATE_KEY",
+              "DATABASE_PASSWORD"
+            ]
+          }
+        },
+        "boundary_verification": {
+          "required_effectiveness": 70,
+          "fail_on_violation": false,
+          "test_frequency": "once_per_task",
+          "monitoring_enabled": true
+        },
+        "network_monitoring": {
+          "connection_state_tracking": {
+            "enabled": true,
+            "tracking_intensity": "restricted",
+            "max_connections_tracked": 5000,
+            "connection_retention_seconds": 600,
+            "memory_budget_mb": 100,
+            "track_suspicious_connections": true,
+            "log_connection_state_changes": true
+          },
+          "bandwidth_monitoring": {
+            "enabled": true,
+            "daily_bandwidth_limit_mb": 5000,
+            "real_time_rate_limiting": true,
+            "rate_limiting_strategy": "exponential_backoff",
+            "bandwidth_alerts": {
+              "enabled": true,
+              "threshold_percentage": 75,
+              "alert_on_exceeded": true,
+              "auto_enforce_limits": false
+            },
+            "quota_management": {
+              "reset_policy": "daily",
+              "grace_period_minutes": 15,
+              "burst_allowance_percentage": 50
+            }
+          },
+          "live_traffic_analysis": {
+            "enabled": true,
+            "behavioral_pattern_detection": true,
+            "analysis_depth": "standard",
+            "ml_ready_framework": false,
+            "pattern_policies": {
+              "allowed_patterns": ["normal_web_traffic", "api_communication"],
+              "blocked_patterns": ["port_scanning", "data_exfiltration"],
+              "alert_patterns": ["unusual_ports", "high_frequency_connections"],
+              "actions": {
+                "suspicious": "alert",
+                "malicious": "block",
+                "unknown": "log"
+              }
+            },
+            "anomaly_detection": {
+              "enable_baseline_learning": true,
+              "baseline_learning_period_minutes": 15,
+              "sensitivity_level": "medium",
+              "false_positive_reduction": true
+            }
+          },
+          "protocol_analysis": {
+            "enabled": true,
+            "layered_inspection": {
+              "http_analysis": {
+                "enabled": true,
+                "inspection_depth": "full",
+                "max_header_size_kb": 16,
+                "allowed_methods": ["GET", "POST", "PUT", "DELETE", "HEAD", "OPTIONS", "PATCH"],
+                "blocked_headers": ["x-forwarded-for", "x-real-ip", "authorization"]
+              },
+              "dns_analysis": {
+                "enabled": true,
+                "monitor_query_types": true,
+                "detect_dnstunneling": true,
+                "max_query_length": 253,
+                "blocked_domains": [],
+                "whitelisted_domains": ["api.github.com", "registry.npmjs.org", "github.com", "npmjs.com"]
+              },
+              "tls_analysis": {
+                "enabled": false,
+                "certificate_validation": "full",
+                "inspect_sni": true,
+                "allowed_cipher_suites": ["TLS_AES_256_GCM_SHA384", "TLS_CHACHA20_POLY1305_SHA256", "TLS_AES_128_GCM_SHA256"],
+                "block_weak_ciphers": true
+              }
+            },
+            "signature_based_analysis": {
+              "enabled": true,
+              "update_signatures_automatically": true,
+              "signature_update_interval_hours": 12,
+              "custom_signatures": [],
+              "severity_threshold": "low"
+            },
+            "feature_flags": {
+              "gradual_rollout": true,
+              "rollout_percentage": 100,
+              "canary_testing": false,
+              "performance_monitoring": true
+            }
+          }
+        }
+      }
+    },
+    "boundary_verification": {
+      "enabled": true,
+      "min_effectiveness_score": {
+        "restricted": 90,
+        "standard": 70
+      },
+      "fail_on_violation": {
+        "restricted": true,
+        "standard": false
+      },
+      "test_boundaries": [
+        "network",
+        "filesystem",
+        "process"
+      ],
+      "realtime_monitoring": {
+        "enabled": true,
+        "log_level": "info",
+        "state_capture_interval": 5000
+      }
+    },
+    "effectiveness_tracking": {
+      "enabled": true,
+      "metrics": [
+        "boundary_effectiveness_score",
+        "violation_detection_rate",
+        "isolation_success_rate",
+        "threat_blocking_rate"
+      ],
+      "dashboard_integration": true,
+      "historical_analysis": true
+    }
+  }
+}

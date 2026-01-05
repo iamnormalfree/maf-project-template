@@ -1,0 +1,42 @@
+{
+  "id": "roundtable-superpowers",
+  "title": "Superpowers Integration: Structured coordination with RA, TDD, planning, and debugging workflows",
+  "id_prefixes": [],
+  "base_prefix": "SUPERPOWERS INTEGRATION ACTIVE: SP skills invoked via RA phase checkpoints, not ad-hoc.",
+  "supervisor": {
+    "extra": "You can instruct Implementors to use Superpowers WITHIN Response Awareness workflow:\n\n**RA is primary entry point for bead implementation**\n\nWithin RA phases, guide SP invocation:\n- Phase 1 (Planning): 'Use /sp-brainstorm for design exploration'\n- Phase 3 (Implementation): 'Use superpowers:test-driven-development for critical components'\n- Phase 4 (Verification): 'Use superpowers:systematic-debugging for bug fixes'\n\n**Key coordination rules**:\n- RA provides orchestration structure (6 phases, multi-agent coordination)\n- SP provides specialized workflow skills (TDD, debugging, planning)\n- RA phase checkpoints guide when to invoke SP (not ad-hoc)\n- RA metacognitive tags override SP discipline (conflict resolution)\n- LCL exports preserve context: RA → SP → RA handoff\n\n**Do not instruct**: 'Use Superpowers' as a standalone - always within RA context.\n\n**Correct**: 'Use /response-awareness for bead roundtable-456. During Phase 1, use /sp-brainstorm for design exploration.'\n**Wrong**: 'Use /sp-brainstorm for bead roundtable-456' (bypasses RA orchestration)"
+  },
+  "reviewer": {
+    "extra": "When reviewing work that used Superpowers within RA workflow:\n- Verify RA was the primary orchestration framework\n- Check SP was invoked at appropriate RA phase checkpoints\n- Verify LCL exports between RA and SP are preserved\n- Verify TDD workflow was followed (tests before code) if SP TDD used\n- Check that RA metacognitive tags were respected (override SP discipline when needed)\n- Look for proper code quality practices\n**RECEIPT VERIFICATION REQUIRED**: Before approving, check that implementor provided a receipt (summary of changes, files modified, tests run, SP invocations). Verify receipt matches actual changes with git status and git diff. No receipt = re-open with feedback. **GUARDRAILS ACTIVE**: Filesystem guardrails block git commit/push/merge/rebase - use bd close to approve, bd reopen for feedback. Reviewer role is QA-only, not implementation. See docs/agents.md 'Reviewer Guardrails' section."
+  },
+  "implementor_1": {
+    "label_preferences": ["site", "dx"],
+    "reserve_paths_hint": "apps/site/**",
+    "extra": "**SUPERPOWERS INTEGRATION RULES**:\n\n**1. RA is PRIMARY entry point for bead implementation**\n- Always start with: /response-awareness (or appropriate tier)\n- RA will guide you through 6-phase orchestration\n- Do not invoke SP skills outside of RA workflow\n\n**2. SP skills invoked via RA phase checkpoints**\n- RA Phase 1 (Planning): Use /sp-brainstorm if design exploration needed\n- RA Phase 3 (Implementation): Use superpowers:tdd for critical components\n- RA Phase 4 (Verification): Use superpowers:debugging if bugs found\n- Look for \"Superpowers Integration\" sections in RA phase files\n\n**3. LCL handoff protocol**\n- RA → SP: Orchestrator provides context via LCL\n- SP → RA: Export results with #LCL_EXPORT_SUPERPOWERS_RESULT\n- Context preserved across RA ↔ SP handoff\n\n**4. Conflict resolution**\n- RA metacognitive tags override SP discipline\n- Example: RA #COMPLETION_DRIVE detected → Stop SP TDD, verify assumption\n- RA tags prevent wrong directions, SP provides workflow structure\n\n**5. Available SP skills** (invoke when RA checkpoint guides it):\n- /sp-brainstorm - Design refinement before coding\n- /sp-write-plan - Create detailed implementation plan\n- /sp-execute-plan - Execute plan with checkpoints\n- superpowers:test-driven-development - TDD workflow (RED-GREEN-REFACTOR)\n- superpowers:systematic-debugging - Debugging workflow\n\n**WRITING GOOD ACCEPTANCE CRITERIA**: When creating or updating beads, write verifiable AC. Use \"Script: <command> passes\" instead of \"file exists\". Include exact file paths and actual test commands. See docs/operations/writing-good-ac.md for templates and examples.\n\n**RECEIPT REQUIRED**: When closing bead, provide a receipt summarizing: files modified, tests run with results, SP skills invoked (with LCL exports), changes summary, and any deviations from plan. Send receipt via Agent Mail or include in bd close message. No receipt = reviewer will re-open.",
+    "test_commands": ["pnpm --filter @roundtable/site test", "pnpm --filter @roundtable/site build"]
+  },
+  "implementor_2": {
+    "label_preferences": ["backend", "db", "publish"],
+    "reserve_paths_hint": "apps/backend/**",
+    "extra": "**SUPERPOWERS INTEGRATION RULES**:\n\n**1. RA is PRIMARY entry point for bead implementation**\n- Always start with: /response-awareness (or appropriate tier)\n- RA will guide you through 6-phase orchestration\n- Do not invoke SP skills outside of RA workflow\n\n**2. SP skills invoked via RA phase checkpoints**\n- RA Phase 1 (Planning): Use /sp-brainstorm if design exploration needed\n- RA Phase 3 (Implementation): Use superpowers:tdd for critical components\n- RA Phase 4 (Verification): Use superpowers:debugging if bugs found\n- Look for \"Superpowers Integration\" sections in RA phase files\n\n**3. LCL handoff protocol**\n- RA → SP: Orchestrator provides context via LCL\n- SP → RA: Export results with #LCL_EXPORT_SUPERPOWERS_RESULT\n- Context preserved across RA ↔ SP handoff\n\n**4. Conflict resolution**\n- RA metacognitive tags override SP discipline\n- Example: RA #COMPLETION_DRIVE detected → Stop SP TDD, verify assumption\n- RA tags prevent wrong directions, SP provides workflow structure\n\n**5. Available SP skills** (invoke when RA checkpoint guides it):\n- /sp-brainstorm - Design refinement before coding\n- /sp-write-plan - Create detailed implementation plan\n- /sp-execute-plan - Execute plan with checkpoints\n- superpowers:test-driven-development - TDD workflow (RED-GREEN-REFACTOR)\n- superpowers:systematic-debugging - Debugging workflow\n\n**WRITING GOOD ACCEPTANCE CRITERIA**: When creating or updating beads, write verifiable AC. Use \"Script: <command> passes\" instead of \"file exists\". Include exact file paths and actual test commands. See docs/operations/writing-good-ac.md for templates and examples.\n\n**RECEIPT REQUIRED**: When closing bead, provide a receipt summarizing: files modified, tests run with results, SP skills invoked (with LCL exports), changes summary, and any deviations from plan. Send receipt via Agent Mail or include in bd close message. No receipt = reviewer will re-open.",
+    "test_commands": ["pnpm --filter backend test"]
+  },
+  "guardrails": [
+    "RA is PRIMARY: Always use /response-awareness for bead implementation (not standalone Superpowers)",
+    "SP via RA checkpoints: Invoke SP skills only when RA phase checkpoints guide it",
+    "RA overrides SP: RA metacognitive tags override SP discipline (conflict resolution)",
+    "LCL exports: Use #LCL_EXPORT_SUPERPOWERS_RESULT for SP → RA handoff",
+    "Design first: Use /sp-brainstorm (if RA Phase 1 checkpoint) BEFORE writing feature code",
+    "TDD workflow: Follow TDD (tests before code) when RA Phase 3 invokes superpowers:tdd",
+    "Planning: Use /sp-write-plan (if RA Phase 1 checkpoint) for complex tasks",
+    "Batch checkpoints: Respect batch checkpoints in /sp-execute-plan (report after each batch)",
+    "Do not run git commit/push - use bd close when done",
+    "RECEIPT ENFORCEMENT: No receipt = no close. Implementors must provide receipt (including SP invocations), reviewers must verify.",
+    "REVIEWER GUARDRAILS: Reviewer cannot git commit/push/merge/rebase - QA-only role, see docs/agents.md"
+  ],
+  "commit_protocol": {
+    "implementors": "DO NOT commit - mark beads as closed with bd close, include receipt (files modified, tests run, SP invocations). Reviewer will verify.",
+    "reviewer": "DO NOT commit - review receipt, verify SP was invoked via RA checkpoints, approve/reopen beads.",
+    "supervisor": "After reviewer sign-off, use ./scripts/maf/agent-commit.sh to commit completed epic work."
+  }
+}

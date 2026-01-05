@@ -1,0 +1,1009 @@
+// ABOUTME: Performance budget manager for MAF dashboard network monitoring
+// ABOUTME: Ensures CPX41 compliance with adaptive resource allocation and budget tracking
+
+import {
+  PerformanceBudgetManager,
+  PerformanceBudgetReport,
+  NetworkPerformanceMetrics
+} from '../types/network-metrics';
+
+/**
+ * CPX42 Performance Budget Manager (Updated for 16GB RAM Server)
+ *
+ * Enforces strict performance constraints for dashboard network monitoring:
+ * - Total dashboard overhead: < 6% (reduced from 8% due to 16GB vs 32GB)
+ * - Connection states: < 2% (reduced from 3%)
+ * - Bandwidth monitoring: < 1.5% (reduced from 2%)
+ * - Traffic patterns: < 1.5% (reduced from 2%)
+ * - Protocol analysis: < 1% (unchanged)
+ */
+export class CPX42PerformanceBudgetManager implements PerformanceBudgetManager {
+  private budgets: Map<string, { allocated: number; used: number; peakUsage: number }> = new Map();
+  private totalBudget: number = 6; // 6% total budget for dashboard (reduced from 8% for 16GB server)
+  private alerts: Array<{ component: string; type: 'warning' | 'critical'; message: string; timestamp: number }> = [];
+  private metrics: NetworkPerformanceMetrics = {
+    cpuUsage: 0,
+    memoryUsage: 0,
+    diskIO: 0,
+    networkIO: 0,
+    processingLatency: 0,
+    queueDepth: 0,
+    errorRate: 0,
+    throughput: 0,
+    efficiency: 0
+  };
+  private lastMetricsUpdate: number = 0;
+
+  constructor() {
+    this.initializeDefaultBudgets();
+    // Establish performance baseline after initialization
+    setTimeout(() => {
+      this.establishPerformanceBaseline();
+    }, 1000); // Allow system to stabilize before establishing baseline
+  }
+
+  /**
+   * Allocate budget to a component
+   */
+  allocateBudget(component: string, budget: number): void {
+    const totalAllocated = this.getTotalAllocated();
+    const availableBudget = this.totalBudget - totalAllocated;
+
+    if (budget > availableBudget) {
+      this.addAlert(component, 'warning', `Requested budget ${budget}% exceeds available ${availableBudget}%`);
+      return;
+    }
+
+    this.budgets.set(component, {
+      allocated: budget,
+      used: 0,
+      peakUsage: 0
+    });
+
+    console.log(`Allocated ${budget}% budget to ${component}. Remaining: ${availableBudget - budget}%`);
+  }
+
+  /**
+   * Check budget status for a component
+   */
+  checkBudget(component: string) {
+    const budget = this.budgets.get(component);
+    if (!budget) {
+      return {
+        allocated: 0,
+        used: 0,
+        available: 0,
+        efficiency: 0,
+        status: 'not_allocated' as const
+      };
+    }
+
+    const available = budget.allocated - budget.used;
+    const efficiency = budget.allocated > 0 ? (budget.used / budget.allocated) * 100 : 0;
+
+    let status: 'within_budget' | 'approaching_limit' | 'exceeded' | 'not_allocated' = 'within_budget';
+    if (budget.used > budget.allocated) {
+      status = 'exceeded';
+    } else if (efficiency > 80) {
+      status = 'approaching_limit';
+    }
+
+    return {
+      allocated: budget.allocated,
+      used: budget.used,
+      available,
+      efficiency,
+      status
+    };
+  }
+
+  /**
+   * Adjust budget usage for a component
+   */
+  adjustBudget(component: string, newUsage: number): void {
+    const budget = this.budgets.get(component);
+    if (!budget) {
+      this.addAlert(component, 'warning', `Cannot adjust budget for unallocated component: ${component}`);
+      return;
+    }
+
+    const oldUsage = budget.used;
+    budget.used = Math.min(newUsage, budget.allocated);
+    budget.peakUsage = Math.max(budget.peakUsage, budget.used);
+
+    // Check for budget violations
+    if (budget.used > budget.allocated) {
+      this.addAlert(component, 'critical', `Budget exceeded: ${budget.used.toFixed(2)}% used of ${budget.allocated}% allocated`);
+    } else if (budget.used > budget.allocated * 0.9) {
+      this.addAlert(component, 'warning', `Approaching budget limit: ${budget.used.toFixed(2)}% used of ${budget.allocated}% allocated`);
+    }
+
+    console.log(`Adjusted ${component} budget usage: ${oldUsage.toFixed(2)}% → ${budget.used.toFixed(2)}%`);
+  }
+
+  /**
+   * Get overall efficiency across all components
+   */
+  getOverallEfficiency(): number {
+    let totalAllocated = 0;
+    let totalUsed = 0;
+
+    for (const component of Array.from(this.budgets.keys())) {
+      const budget = this.budgets.get(component)!;
+      totalAllocated += budget.allocated;
+      totalUsed += budget.used;
+    }
+
+    return totalAllocated > 0 ? (totalUsed / totalAllocated) * 100 : 0;
+  }
+
+  /**
+   * Get comprehensive budget report
+   */
+  getBudgetReport(): PerformanceBudgetReport {
+    const components: Array<{
+      name: string;
+      allocated: number;
+      used: number;
+      efficiency: number;
+      status: 'within_budget' | 'approaching_limit' | 'exceeded';
+    }> = [];
+
+    let totalAllocated = 0;
+    let totalUsed = 0;
+
+    for (const component of Array.from(this.budgets.keys())) {
+      const budget = this.budgets.get(component)!;
+      const efficiency = budget.allocated > 0 ? (budget.used / budget.allocated) * 100 : 0;
+      let status: 'within_budget' | 'approaching_limit' | 'exceeded' = 'within_budget';
+
+      if (budget.used > budget.allocated) {
+        status = 'exceeded';
+      } else if (efficiency > 80) {
+        status = 'approaching_limit';
+      }
+
+      components.push({
+        name: component,
+        allocated: budget.allocated,
+        used: budget.used,
+        efficiency,
+        status
+      });
+
+      totalAllocated += budget.allocated;
+      totalUsed += budget.used;
+    }
+
+    const efficiency = this.getOverallEfficiency();
+    const recommendations = this.generateRecommendations(components, efficiency);
+
+    return {
+      totalBudget: this.totalBudget,
+      allocatedBudget: totalAllocated,
+      usedBudget: totalUsed,
+      availableBudget: this.totalBudget - totalAllocated,
+      efficiency,
+      components,
+      recommendations
+    };
+  }
+
+  /**
+   * Update system performance metrics
+   */
+  updatePerformanceMetrics(metrics: Partial<NetworkPerformanceMetrics>): void {
+    this.metrics = { ...this.metrics, ...metrics };
+    this.lastMetricsUpdate = Date.now();
+
+    // Adaptive budget adjustment based on system performance
+    this.performAdaptiveAdjustment();
+  }
+
+  /**
+   * Get current performance metrics
+   */
+  getPerformanceMetrics(): NetworkPerformanceMetrics {
+    return { ...this.metrics };
+  }
+
+  /**
+   * Get recent alerts
+   */
+  getAlerts(since?: number): Array<{ component: string; type: 'warning' | 'critical'; message: string; timestamp: number }> {
+    const cutoff = since || (Date.now() - 3600000); // Default to last hour
+    return this.alerts.filter(alert => alert.timestamp >= cutoff);
+  }
+
+  /**
+   * Clear old alerts
+   */
+  clearAlerts(olderThan?: number): void {
+    const cutoff = olderThan || (Date.now() - 86400000); // Default to last 24 hours
+    this.alerts = this.alerts.filter(alert => alert.timestamp >= cutoff);
+  }
+
+  /**
+   * Reset all budgets and metrics
+   */
+  reset(): void {
+    this.budgets.clear();
+    this.alerts = [];
+    this.metrics = {
+      cpuUsage: 0,
+      memoryUsage: 0,
+      diskIO: 0,
+      networkIO: 0,
+      processingLatency: 0,
+      queueDepth: 0,
+      errorRate: 0,
+      throughput: 0,
+      efficiency: 0
+    };
+    this.lastMetricsUpdate = 0;
+    this.initializeDefaultBudgets();
+  }
+
+  /**
+   * System-Wide Impact Analysis
+   *
+   * Provides comprehensive impact measurement methodology for security operations
+   * on overall CPX41 system performance and compliance.
+   */
+  getSystemWideImpactAnalysis(): {
+    overallImpact: {
+      status: 'minimal' | 'moderate' | 'significant' | 'critical';
+      score: number; // 0-100, higher is worse impact
+      degradationFromBaseline: number; // percentage
+    };
+    componentImpacts: Array<{
+      component: string;
+      impactLevel: 'low' | 'medium' | 'high' | 'critical';
+      performanceDegradation: number; // percentage
+      budgetUtilization: number; // percentage
+      latencyIncrease: number; // percentage
+    }>;
+    baselineComparison: {
+      currentMetrics: NetworkPerformanceMetrics;
+      baselineMetrics: NetworkPerformanceMetrics;
+      degradationPercentage: {
+        cpu: number;
+        memory: number;
+        latency: number;
+        throughput: number;
+      };
+    };
+    complianceImpact: {
+      cpx42Compliant: boolean;
+      totalOverhead: number;
+      overheadLimit: number;
+      riskLevel: 'low' | 'medium' | 'high';
+    };
+    recommendations: string[];
+  } {
+    const currentMetrics = this.metrics;
+    const baselineMetrics = this.getBaselineMetrics();
+
+    // Calculate degradation from baseline
+    const degradationPercentage = {
+      cpu: baselineMetrics.cpuUsage > 0 ? ((currentMetrics.cpuUsage - baselineMetrics.cpuUsage) / baselineMetrics.cpuUsage) * 100 : 0,
+      memory: baselineMetrics.memoryUsage > 0 ? ((currentMetrics.memoryUsage - baselineMetrics.memoryUsage) / baselineMetrics.memoryUsage) * 100 : 0,
+      latency: baselineMetrics.processingLatency > 0 ? ((currentMetrics.processingLatency - baselineMetrics.processingLatency) / baselineMetrics.processingLatency) * 100 : 0,
+      throughput: baselineMetrics.throughput > 0 ? ((baselineMetrics.throughput - currentMetrics.throughput) / baselineMetrics.throughput) * 100 : 0
+    };
+
+    // Calculate component impacts
+    const componentImpacts = this.calculateComponentImpacts(degradationPercentage);
+
+    // Calculate overall impact score
+    const overallScore = this.calculateOverallImpactScore(degradationPercentage, componentImpacts);
+
+    // Determine overall impact status
+    let status: 'minimal' | 'moderate' | 'significant' | 'critical';
+    if (overallScore < 20) status = 'minimal';
+    else if (overallScore < 40) status = 'moderate';
+    else if (overallScore < 70) status = 'significant';
+    else status = 'critical';
+
+    // Calculate average degradation
+    const averageDegradation = Object.values(degradationPercentage).reduce((sum, val) => sum + Math.abs(val), 0) / 4;
+
+    // Check compliance impact
+    const report = this.getBudgetReport();
+    const complianceImpact = {
+      cpx42Compliant: report.usedBudget <= 6,
+      totalOverhead: report.usedBudget,
+      overheadLimit: 6,
+      riskLevel: report.usedBudget > 5.5 ? 'high' : report.usedBudget > 5 ? 'medium' : 'low' as 'low' | 'medium' | 'high'
+    };
+
+    // Generate recommendations
+    const recommendations = this.generateImpactRecommendations(status, degradationPercentage, componentImpacts, complianceImpact);
+
+    return {
+      overallImpact: {
+        status,
+        score: overallScore,
+        degradationFromBaseline: averageDegradation
+      },
+      componentImpacts,
+      baselineComparison: {
+        currentMetrics,
+        baselineMetrics,
+        degradationPercentage
+      },
+      complianceImpact,
+      recommendations
+    };
+  }
+
+  /**
+   * Establish performance baseline for impact comparison
+   */
+  establishPerformanceBaseline(): void {
+    const baseline = {
+      cpuUsage: this.metrics.cpuUsage,
+      memoryUsage: this.metrics.memoryUsage,
+      diskIO: this.metrics.diskIO,
+      networkIO: this.metrics.networkIO,
+      processingLatency: this.metrics.processingLatency,
+      queueDepth: this.metrics.queueDepth,
+      errorRate: this.metrics.errorRate,
+      throughput: this.metrics.throughput,
+      efficiency: this.metrics.efficiency
+    };
+
+    // Store baseline in environment or configuration
+    if (typeof process !== 'undefined' && process.env) {
+      process.env.MAF_PERFORMANCE_BASELINE = JSON.stringify(baseline);
+    }
+
+    console.log('Performance baseline established:', baseline);
+  }
+
+  /**
+   * Get stored performance baseline
+   */
+  private getBaselineMetrics(): NetworkPerformanceMetrics {
+    if (typeof process !== 'undefined' && process.env && process.env.MAF_PERFORMANCE_BASELINE) {
+      try {
+        return JSON.parse(process.env.MAF_PERFORMANCE_BASELINE);
+      } catch (error) {
+        console.warn('Failed to parse performance baseline, using defaults');
+      }
+    }
+
+    // Return default baseline if none stored
+    return {
+      cpuUsage: 5,    // 5% CPU baseline
+      memoryUsage: 10, // 10% memory baseline
+      diskIO: 1,       // Low disk I/O baseline
+      networkIO: 2,    // Low network I/O baseline
+      processingLatency: 10, // 10ms latency baseline
+      queueDepth: 0,   // No queueing baseline
+      errorRate: 0.1,  // 0.1% error rate baseline
+      throughput: 100, // High throughput baseline
+      efficiency: 95   // 95% efficiency baseline
+    };
+  }
+
+  /**
+   * Calculate individual component impacts
+   */
+  private calculateComponentImpacts(degradationPercentage: any): Array<{
+    component: string;
+    impactLevel: 'low' | 'medium' | 'high' | 'critical';
+    performanceDegradation: number;
+    budgetUtilization: number;
+    latencyIncrease: number;
+  }> {
+    const report = this.getBudgetReport();
+
+    return report.components.map(component => {
+      const avgDegradation = Object.values(degradationPercentage).reduce((sum: number, val: any) => sum + Math.abs(val), 0) / 4;
+
+      let impactLevel: 'low' | 'medium' | 'high' | 'critical';
+      if (avgDegradation < 5) impactLevel = 'low';
+      else if (avgDegradation < 15) impactLevel = 'medium';
+      else if (avgDegradation < 30) impactLevel = 'high';
+      else impactLevel = 'critical';
+
+      return {
+        component: component.name,
+        impactLevel,
+        performanceDegradation: avgDegradation,
+        budgetUtilization: component.efficiency,
+        latencyIncrease: degradationPercentage.latency || 0
+      };
+    });
+  }
+
+  /**
+   * Calculate overall impact score (0-100, higher is worse)
+   */
+  private calculateOverallImpactScore(
+    degradationPercentage: any,
+    componentImpacts: any[]
+  ): number {
+    // Weight different factors
+    const weights = {
+      cpu: 0.3,
+      memory: 0.25,
+      latency: 0.25,
+      throughput: 0.2
+    };
+
+    let weightedScore = 0;
+    for (const [metric, value] of Object.entries(degradationPercentage)) {
+      const weight = weights[metric as keyof typeof weights] || 0;
+      weightedScore += Math.abs(value as number) * weight;
+    }
+
+    // Factor in component impacts
+    const criticalComponents = componentImpacts.filter(c => c.impactLevel === 'critical').length;
+    const highComponents = componentImpacts.filter(c => c.impactLevel === 'high').length;
+
+    weightedScore += criticalComponents * 15;
+    weightedScore += highComponents * 8;
+
+    return Math.min(100, Math.max(0, weightedScore));
+  }
+
+  /**
+   * Generate recommendations based on impact analysis
+   */
+  private generateImpactRecommendations(
+    status: string,
+    degradationPercentage: any,
+    componentImpacts: any[],
+    complianceImpact: any
+  ): string[] {
+    const recommendations: string[] = [];
+
+    // Overall impact recommendations
+    if (status === 'critical') {
+      recommendations.push('CRITICAL: System performance severely degraded - immediate optimization required');
+    } else if (status === 'significant') {
+      recommendations.push('Significant performance impact detected - review resource allocation');
+    } else if (status === 'moderate') {
+      recommendations.push('Moderate performance impact - monitor closely and consider optimization');
+    }
+
+    // Specific metric recommendations
+    if (degradationPercentage.cpu > 20) {
+      recommendations.push('High CPU degradation detected - reduce concurrent operations or optimize algorithms');
+    }
+
+    if (degradationPercentage.memory > 25) {
+      recommendations.push('High memory degradation detected - implement data retention policies');
+    }
+
+    if (degradationPercentage.latency > 30) {
+      recommendations.push('High latency increase detected - optimize data processing and reduce complexity');
+    }
+
+    if (degradationPercentage.throughput > 15) {
+      recommendations.push('Throughput degradation detected - increase processing capacity or reduce load');
+    }
+
+    // Component-specific recommendations
+    const criticalComponents = componentImpacts.filter(c => c.impactLevel === 'critical');
+    for (const component of criticalComponents) {
+      recommendations.push(`Critical impact on ${component.component} - immediate optimization required`);
+    }
+
+    // Compliance recommendations
+    if (!complianceImpact.cpx42Compliant) {
+      recommendations.push(`CPX42 compliance violated - overhead ${complianceImpact.totalOverhead.toFixed(2)}% exceeds limit ${complianceImpact.overheadLimit}%`);
+    }
+
+    if (recommendations.length === 0) {
+      recommendations.push('System performance within acceptable parameters - continue monitoring');
+    }
+
+    return recommendations;
+  }
+
+  /**
+   * Get health status of the budget manager
+   */
+  getHealthStatus(): {
+    status: 'healthy' | 'warning' | 'critical';
+    score: number;
+    issues: string[];
+    recommendations: string[];
+  } {
+    const report = this.getBudgetReport();
+    const recentAlerts = this.getAlerts(Date.now() - 300000); // Last 5 minutes
+    const issues: string[] = [];
+    const recommendations: string[] = [];
+
+    let score = 100;
+
+    // Check budget efficiency
+    if (report.efficiency > 90) {
+      issues.push('Overall budget efficiency is critically high');
+      score -= 30;
+    } else if (report.efficiency > 75) {
+      issues.push('Overall budget efficiency is elevated');
+      score -= 15;
+    }
+
+    // Check component status
+    const criticalComponents = report.components.filter(c => c.status === 'exceeded');
+    const warningComponents = report.components.filter(c => c.status === 'approaching_limit');
+
+    if (criticalComponents.length > 0) {
+      issues.push(`${criticalComponents.length} components exceeded budget limits`);
+      score -= criticalComponents.length * 25;
+    }
+
+    if (warningComponents.length > 0) {
+      issues.push(`${warningComponents.length} components approaching budget limits`);
+      score -= warningComponents.length * 10;
+    }
+
+    // Check system performance
+    if (this.metrics.cpuUsage > 80) {
+      issues.push('High CPU usage detected');
+      score -= 20;
+    }
+
+    if (this.metrics.memoryUsage > 80) {
+      issues.push('High memory usage detected');
+      score -= 20;
+    }
+
+    if (this.metrics.errorRate > 5) {
+      issues.push('High error rate detected');
+      score -= 15;
+    }
+
+    // Check recent alerts
+    if (recentAlerts.filter(a => a.type === 'critical').length > 0) {
+      issues.push('Critical alerts detected recently');
+      score -= 25;
+    }
+
+    // Generate recommendations
+    recommendations.push(...report.recommendations);
+
+    if (score < 70) {
+      recommendations.push('Consider reducing monitoring intensity or frequency');
+      recommendations.push('Review component configuration for optimization opportunities');
+    }
+
+    if (this.metrics.cpuUsage > 70) {
+      recommendations.push('Reduce concurrent monitoring operations');
+    }
+
+    if (this.metrics.memoryUsage > 70) {
+      recommendations.push('Implement data retention policies for monitoring data');
+    }
+
+    let status: 'healthy' | 'warning' | 'critical' = 'healthy';
+    if (score < 50) {
+      status = 'critical';
+    } else if (score < 80) {
+      status = 'warning';
+    }
+
+    return { status, score, issues, recommendations };
+  }
+
+  // Private methods
+
+  /**
+   * Initialize default budget allocations for CPX42 compliance
+   *
+   * Total budget: 6% distributed across network monitoring and security
+   * - Network monitoring: 4.5% (75% of budget)
+   * - Security operations: 1.5% (25% of budget)
+   */
+  private initializeDefaultBudgets(): void {
+    // Network monitoring allocation (4.5% total) - adjusted for 16GB server
+    this.budgets.set('connection-states', { allocated: 1.5, used: 0, peakUsage: 0 });
+    this.budgets.set('bandwidth-monitoring', { allocated: 1.0, used: 0, peakUsage: 0 });
+    this.budgets.set('traffic-analysis', { allocated: 1.0, used: 0, peakUsage: 0 });
+    this.budgets.set('protocol-analysis', { allocated: 1.0, used: 0, peakUsage: 0 });
+
+    // Security operations allocation (1.5% total) - adjusted for 16GB server
+    this.budgets.set('security-policy-validation', { allocated: 0.3, used: 0, peakUsage: 0 });
+    this.budgets.set('security-network-checks', { allocated: 0.3, used: 0, peakUsage: 0 });
+    this.budgets.set('security-filesystem-access', { allocated: 0.2, used: 0, peakUsage: 0 });
+    this.budgets.set('security-resource-enforcement', { allocated: 0.2, used: 0, peakUsage: 0 });
+    this.budgets.set('security-boundary-tests', { allocated: 0.2, used: 0, peakUsage: 0 });
+    this.budgets.set('security-audit-logging', { allocated: 0.3, used: 0, peakUsage: 0 });
+  }
+
+  /**
+   * Get total allocated budget across all components
+   */
+  private getTotalAllocated(): number {
+    let total = 0;
+    for (const budget of Array.from(this.budgets.values())) {
+      total += budget.allocated;
+    }
+    return total;
+  }
+
+  /**
+   * Add alert to the alert log
+   */
+  private addAlert(component: string, type: 'warning' | 'critical', message: string): void {
+    this.alerts.push({
+      component,
+      type,
+      message,
+      timestamp: Date.now()
+    });
+
+    console.warn(`[${type.toUpperCase()}] ${component}: ${message}`);
+  }
+
+  /**
+   * Perform adaptive budget adjustment based on system performance
+   */
+  private performAdaptiveAdjustment(): void {
+    const systemLoad = (this.metrics.cpuUsage + this.metrics.memoryUsage) / 2;
+    const efficiency = this.getOverallEfficiency();
+
+    // If system is under stress and efficiency is high, reduce budgets
+    if (systemLoad > 70 && efficiency > 75) {
+      this.reduceAllBudgets(0.8); // Reduce by 20%
+    }
+    // If system has capacity and efficiency is low, can increase budgets
+    else if (systemLoad < 40 && efficiency < 40) {
+      this.increaseAllBudgets(1.2); // Increase by 20%
+    }
+  }
+
+  /**
+   * Reduce all component budgets by a factor
+   */
+  private reduceAllBudgets(factor: number): void {
+    for (const component of Array.from(this.budgets.keys())) {
+      const budget = this.budgets.get(component)!;
+      const newAllocated = Math.max(0.5, budget.allocated * factor); // Minimum 0.5%
+      budget.allocated = newAllocated;
+
+      if (budget.used > newAllocated) {
+        budget.used = newAllocated;
+      }
+    }
+
+    console.log(`Reduced all budgets by factor ${factor} due to system load`);
+  }
+
+  /**
+   * Increase all component budgets by a factor (within limits)
+   */
+  private increaseAllBudgets(factor: number): void {
+    const totalAllocated = this.getTotalAllocated();
+    const availableBudget = this.totalBudget - totalAllocated;
+
+    if (availableBudget < 1) {
+      console.log('No available budget to increase allocations');
+      return;
+    }
+
+    for (const component of Array.from(this.budgets.keys())) {
+      const budget = this.budgets.get(component)!;
+      const potentialIncrease = (budget.allocated * factor) - budget.allocated;
+      if (potentialIncrease <= availableBudget / this.budgets.size) {
+        budget.allocated *= factor;
+      }
+    }
+
+    console.log(`Increased all budgets by factor ${factor} due to available capacity`);
+  }
+
+  /**
+   * Generate recommendations based on budget report
+   */
+  private generateRecommendations(components: any[], efficiency: number): string[] {
+    const recommendations: string[] = [];
+
+    // Component-specific recommendations
+    for (const component of components) {
+      if (component.status === 'exceeded') {
+        recommendations.push(`Reduce ${component.name} monitoring frequency or disable non-essential features`);
+      } else if (component.status === 'approaching_limit') {
+        recommendations.push(`Monitor ${component.name} resource usage closely and consider optimization`);
+      } else if (component.efficiency < 30) {
+        recommendations.push(`${component.name} is underutilized - consider increasing monitoring intensity`);
+      }
+    }
+
+    // Overall efficiency recommendations
+    if (efficiency > 85) {
+      recommendations.push('Overall resource usage is high - consider reducing monitoring intensity');
+    } else if (efficiency < 40) {
+      recommendations.push('Overall resource usage is low - can safely increase monitoring capabilities');
+    }
+
+    // System performance recommendations
+    if (this.metrics.cpuUsage > 70) {
+      recommendations.push('High CPU usage - reduce concurrent monitoring operations');
+    }
+
+    if (this.metrics.memoryUsage > 70) {
+      recommendations.push('High memory usage - implement data retention policies');
+    }
+
+    if (this.metrics.processingLatency > 1000) {
+      recommendations.push('High processing latency - optimize data collection algorithms');
+    }
+
+    if (recommendations.length === 0) {
+      recommendations.push('All components operating within optimal parameters');
+    }
+
+    return recommendations;
+  }
+}
+
+/**
+ * Singleton instance for global use
+ */
+export const performanceBudgetManager = new CPX42PerformanceBudgetManager();
+
+/**
+ * Performance budget monitoring utility
+ */
+export class PerformanceBudgetMonitor {
+  private interval: NodeJS.Timeout | null = null;
+  private readonly updateInterval: number = 5000; // 5 seconds
+
+  constructor(private budgetManager: CPX41PerformanceBudgetManager) {}
+
+  /**
+   * Start automatic monitoring
+   */
+  startMonitoring(): void {
+    if (this.interval) {
+      return;
+    }
+
+    this.interval = setInterval(async () => {
+      await this.collectMetrics();
+    }, this.updateInterval);
+
+    console.log('Performance budget monitoring started');
+  }
+
+  /**
+   * Stop automatic monitoring
+   */
+  stopMonitoring(): void {
+    if (this.interval) {
+      clearInterval(this.interval);
+      this.interval = null;
+      console.log('Performance budget monitoring stopped');
+    }
+  }
+
+  /**
+   * Collect system metrics and update budget manager
+   */
+  private async collectMetrics(): Promise<void> {
+    try {
+      const metrics = await this.getSystemMetrics();
+      this.budgetManager.updatePerformanceMetrics(metrics);
+    } catch (error) {
+      console.warn('Failed to collect performance metrics:', (error as Error).message);
+    }
+  }
+
+  /**
+   * Get current system metrics
+   */
+  private async getSystemMetrics(): Promise<Partial<NetworkPerformanceMetrics>> {
+    const metrics: Partial<NetworkPerformanceMetrics> = {};
+
+    try {
+      // Get CPU usage (simplified)
+      const { exec } = await import('node:child_process');
+      const { promisify } = await import('node:util');
+      const execAsync = promisify(exec);
+
+      try {
+        const { stdout } = await execAsync('top -bn1 | grep "Cpu(s)" | awk \'{print $2}\'', { timeout: 2000 });
+        metrics.cpuUsage = parseFloat(stdout.replace('%us,', '')) || 0;
+      } catch {
+        metrics.cpuUsage = 0;
+      }
+
+      try {
+        const { stdout } = await execAsync('free | grep Mem | awk \'{print ($3/$2) * 100.0}\'', { timeout: 2000 });
+        metrics.memoryUsage = parseFloat(stdout) || 0;
+      } catch {
+        metrics.memoryUsage = 0;
+      }
+
+      // Calculate efficiency based on metrics
+      metrics.efficiency = this.budgetManager.getOverallEfficiency();
+
+    } catch (error) {
+      console.warn('Error collecting system metrics:', error);
+    }
+
+    return metrics;
+  }
+}
+/**
+ * Security Performance Budget Integration
+ *
+ * Extends the existing CPX41 Performance Budget Manager to support
+ * integrated security budget allocation (2% of 8% total CPX41 budget)
+ *
+ * Security operations are part of the total 8% budget, not additional to it.
+ */
+export class SecurityPerformanceBudgetIntegration {
+  private budgetManager: CPX41PerformanceBudgetManager;
+
+  // Security budget allocation (2% of total system budget, within 8% cap)
+  private readonly SECURITY_BUDGET_PERCENTAGE = 2.0;
+  
+  constructor(budgetManager: CPX41PerformanceBudgetManager) {
+    this.budgetManager = budgetManager;
+    this.initializeSecurityBudget();
+  }
+
+  /**
+   * Initialize security budget allocation
+   *
+   * Security budget is already allocated in initializeDefaultBudgets().
+   * This method validates the allocation and sets up monitoring.
+   */
+  private initializeSecurityBudget(): void {
+    // Security budgets are pre-allocated in initializeDefaultBudgets()
+    // Validate that security components exist and have correct allocations
+    const expectedSecurityComponents = [
+      'security-policy-validation',
+      'security-network-checks',
+      'security-filesystem-access',
+      'security-resource-enforcement',
+      'security-boundary-tests',
+      'security-audit-logging'
+    ];
+
+    let totalSecurityAllocated = 0;
+    for (const component of expectedSecurityComponents) {
+      const status = this.budgetManager.checkBudget(component);
+      if (status.allocated === 0) {
+        console.warn(`Security component ${component} not found in budget allocation`);
+      }
+      totalSecurityAllocated += status.allocated;
+    }
+
+    console.log(`Security performance budget validated: ${totalSecurityAllocated.toFixed(1)}% total allocation (target: ${this.SECURITY_BUDGET_PERCENTAGE}%)`);
+
+    // Validate we're within the 2% security budget target
+    if (Math.abs(totalSecurityAllocated - this.SECURITY_BUDGET_PERCENTAGE) > 0.1) {
+      console.warn(`Security budget mismatch: allocated ${totalSecurityAllocated.toFixed(1)}%, target ${this.SECURITY_BUDGET_PERCENTAGE}%`);
+    }
+  }
+
+  /**
+   * Get security budget status
+   */
+  getSecurityBudgetStatus(): {
+    overall: { allocated: number; used: number; available: number; efficiency: number };
+    components: Array<{ name: string; allocated: number; used: number; efficiency: number; status: string }>;
+  } {
+    const overall = this.budgetManager.checkBudget('security-overall');
+    
+    const components = [
+      'security-policy-validation',
+      'security-network-checks', 
+      'security-filesystem-access',
+      'security-resource-enforcement',
+      'security-boundary-tests',
+      'security-audit-logging'
+    ].map(component => {
+      const status = this.budgetManager.checkBudget(component);
+      return {
+        name: component.replace('security-', ''),
+        allocated: status.allocated,
+        used: status.used,
+        efficiency: status.efficiency,
+        status: status.status
+      };
+    });
+
+    return {
+      overall: {
+        allocated: overall.allocated,
+        used: overall.used,
+        available: overall.available,
+        efficiency: overall.efficiency
+      },
+      components
+    };
+  }
+
+  /**
+   * Validate security budget compliance
+   */
+  validateSecurityBudgetCompliance(): {
+    compliant: boolean;
+    violations: Array<{
+      component: string;
+      type: 'budget_exceeded' | 'efficiency_too_high';
+      severity: 'medium' | 'high' | 'critical';
+      message: string;
+    }>;
+  } {
+    const violations = [];
+    const securityStatus = this.getSecurityBudgetStatus();
+
+    // Check overall security budget
+    if (securityStatus.overall.efficiency > 90) {
+      violations.push({
+        component: 'overall',
+        type: 'efficiency_too_high',
+        severity: securityStatus.overall.efficiency > 95 ? 'critical' : 'high',
+        message: 'Security budget efficiency at ' + securityStatus.overall.efficiency.toFixed(1) + '% (threshold: 90%)'
+      });
+    }
+
+    // Check individual components
+    for (const component of securityStatus.components) {
+      if (component.status === 'exceeded') {
+        violations.push({
+          component: component.name,
+          type: 'budget_exceeded',
+          severity: 'high',
+          message: component.name + ' exceeded budget: ' + component.used.toFixed(2) + '% used of ' + component.allocated + '% allocated'
+        });
+      } else if (component.efficiency > 85) {
+        violations.push({
+          component: component.name,
+          type: 'efficiency_too_high',
+          severity: 'medium',
+          message: component.name + ' efficiency high: ' + component.efficiency.toFixed(1) + '% (threshold: 85%)'
+        });
+      }
+    }
+
+    return {
+      compliant: violations.length === 0,
+      violations
+    };
+  }
+
+  /**
+   * Get security performance recommendations
+   */
+  getSecurityPerformanceRecommendations(): string[] {
+    const compliance = this.validateSecurityBudgetCompliance();
+    const recommendations = [];
+
+    if (!compliance.compliant) {
+      recommendations.push('Security budget violations detected - review allocation or reduce operation intensity');
+    }
+
+    const securityStatus = this.getSecurityBudgetStatus();
+    
+    // Check for underutilized components
+    for (const component of securityStatus.components) {
+      if (component.efficiency < 30) {
+        recommendations.push('Consider increasing ' + component.name + ' monitoring intensity (currently ' + component.efficiency.toFixed(1) + '% utilized)');
+      }
+    }
+
+    // Check overall efficiency
+    if (securityStatus.overall.efficiency > 80) {
+      recommendations.push('Overall security budget usage high (' + securityStatus.overall.efficiency.toFixed(1) + '%) - consider optimizing operation frequency');
+    } else if (securityStatus.overall.efficiency < 40) {
+      recommendations.push('Security budget underutilized (' + securityStatus.overall.efficiency.toFixed(1) + '%) - can safely increase monitoring capabilities');
+    }
+
+    if (recommendations.length === 0) {
+      recommendations.push('All security budget allocations within optimal parameters');
+    }
+
+    return recommendations;
+  }
+}

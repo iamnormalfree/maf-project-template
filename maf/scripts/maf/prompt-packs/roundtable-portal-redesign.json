@@ -1,0 +1,39 @@
+{
+  "id": "roundtable-portal-redesign",
+  "title": "Portal Redesign: Swiss-spa elegance for member portal (prototype → production)",
+  "id_prefixes": ["roundtable-portal-redesign.", "roundtable-portal-redesign"],
+  "base_prefix": "Active plan: roundtable-portal-redesign (member portal redesign v4.0). Start by checking Agent Mail and any pending /unblock actions. Read docs/plan/portal-redesign-tmux.md Section 0 for validation protocol.",
+  "supervisor": {
+    "extra": "Keep everyone on the epic (roundtable-portal-redesign.*). Run bd ready or bv --robot-triage to see available tasks. Critical coordination: Bead 3 (CSS) is SINGLE-AGENT ONLY. Beads 7,8,9 all modify memberPages.ts - must execute serially. Close beads only after validation script passes: ./apps/backend/scripts/portal-redesign/validate-bead.sh N. For complex epic-level decisions, use ultrathink."
+  },
+  "reviewer": {
+    "extra": "Verify the bead's validation script passes: ./apps/backend/scripts/portal-redesign/validate-bead.sh <bead-number>. For CSS beads (2,3), run css-integrity-check.sh. For interface changes (bead 5), verify call-site-verifier.sh shows all updates. **RECEIPT VERIFICATION REQUIRED**: Before approving, check that implementor provided a receipt (summary of changes, files modified, tests run). Verify receipt matches actual changes with git status and git diff. No receipt = re-open with feedback. **GUARDRAILS ACTIVE**: Filesystem guardrails block git commit/push/merge/rebase - use bd close to approve, bd reopen for feedback. Reviewer role is QA-only, not implementation. See docs/agents.md 'Reviewer Guardrails' section. Re-open with concrete diffs if validation fails. For complex analysis, use ultrathink."
+  },
+  "implementor_1": {
+    "label_preferences": ["backend", "portal", "css", "ux"],
+    "reserve_paths_hint": "apps/backend/src/routes/memberPages.ts, apps/backend/src/routes/memberLogin.ts, apps/backend/src/public/** for CSS/portal tasks",
+    "test_commands": ["pnpm --filter backend test memberPages", "pnpm --filter backend test memberLogin", "pnpm --filter backend build"],
+    "extra": "CRITICAL: When implementing beads, ALWAYS start with /response-awareness \"Implement bead [id]: [title]\" - this enables metacognitive orchestration and proper skill selection. **WRITING GOOD ACCEPTANCE CRITERIA**: When creating or updating beads, write verifiable AC. Use \"Script: <command> passes\" instead of \"file exists\". Include exact file paths and actual test commands. See docs/operations/writing-good-ac.md for templates and examples. **RECEIPT REQUIRED**: When closing bead, provide a receipt summarizing: files modified, tests run with results, changes summary, and any deviations from plan. Send receipt via Agent Mail or include in bd close message. No receipt = reviewer will re-open."
+  },
+  "implementor_2": {
+    "label_preferences": ["backend", "lib", "email", "shared"],
+    "reserve_paths_hint": "apps/backend/src/lib/**, apps/backend/src/email/** for utility and email tasks",
+    "test_commands": ["pnpm --filter backend test htmlUtils", "pnpm --filter backend test dateUtils", "pnpm --filter backend build"],
+    "extra": "CRITICAL: When implementing beads, ALWAYS start with /response-awareness \"Implement bead [id]: [title]\" - this enables metacognitive orchestration and proper skill selection. **WRITING GOOD ACCEPTANCE CRITERIA**: When creating or updating beads, write verifiable AC. Use \"Script: <command> passes\" instead of \"file exists\". Include exact file paths and actual test commands. See docs/operations/writing-good-ac.md for templates and examples. **RECEIPT REQUIRED**: When closing bead, provide a receipt summarizing: files modified, tests run with results, changes summary, and any deviations from plan. Send receipt via Agent Mail or include in bd close message. No receipt = reviewer will re-open."
+  },
+  "guardrails": [
+    "VALIDATION SCRIPTS MUST PASS: Run ./apps/backend/scripts/portal-redesign/validate-bead.sh N after each bead.",
+    "BEAD STATE TRACKING: Run bead-state.sh start N before work, complete N after validation passes.",
+    "CSS SINGLE-WRITER: Only ONE agent modifies apps/backend/src/public/css/portal.css. Bead 3 does all 5 components.",
+    "FILE RESERVATION: Reserve paths before editing with reason=<bead-id>. See plan Section 2.4 for constraints.",
+    "CRITICAL: sendInviteEmail interface changes in Bead 5 - MUST update 2 call sites (memberPages.ts, internalAdmin.ts).",
+    "CRITICAL: ESM mode is OFF - use __dirname, NOT import.meta.url (plan Section 2.4 constraint #1).",
+    "TDD-first: Write failing test before implementation (plan Section 3.1).",
+    "Do NOT run git commit/push manually - commits handled by reviewer sign-off.",
+    "Import escapeHtml from lib/htmlUtils.js - NEVER define locally (XSS risk).",
+    "For form data, use application/x-www-form-urlencoded parser (plan Pattern 3).",
+    "Keep changes DRY/YAGNI; small diffs; green tests before closing bead.",
+    "RECEIPT ENFORCEMENT: No receipt = no close. Implementors must provide receipt, reviewers must verify.",
+    "REVIEWER GUARDRAILS: Reviewer cannot git commit/push/merge/rebase - QA-only role, see docs/agents.md"
+  ]
+}

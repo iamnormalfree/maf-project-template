@@ -1,0 +1,676 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "MAF Agent Configuration Schema",
+  "description": "JSON schema for MAF tmux orchestration agent configuration",
+  "type": "object",
+  "required": [
+    "version",
+    "metadata",
+    "agent_types",
+    "session_layouts",
+    "integration_settings",
+    "defaults"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON schema reference"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$",
+      "description": "Configuration version using semantic versioning"
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["created", "description"],
+      "properties": {
+        "created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Configuration creation timestamp"
+        },
+        "last_updated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last update timestamp"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of the configuration"
+        },
+        "nextnest_version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Compatible NextNest version"
+        }
+      }
+    },
+    "agent_types": {
+      "type": "object",
+      "description": "Definitions of available agent types",
+      "patternProperties": {
+        "^[a-zA-Z][a-zA-Z0-9-_]*$": {
+          "type": "object",
+          "required": ["description", "capabilities", "default_model", "environment"],
+          "properties": {
+            "description": {
+              "type": "string",
+              "description": "Human-readable description of the agent type"
+            },
+            "capabilities": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of agent capabilities"
+            },
+            "default_model": {
+              "type": "string",
+              "description": "Default AI model for this agent type"
+            },
+            "resource_limits": {
+              "type": "object",
+              "properties": {
+                "cpu_percent": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100,
+                  "description": "Maximum CPU percentage per agent"
+                },
+                "memory_mb": {
+                  "type": "integer",
+                  "minimum": 64,
+                  "description": "Maximum memory in MB per agent"
+                },
+                "max_sessions": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "description": "Maximum concurrent sessions for this agent type"
+                }
+              }
+            },
+            "environment": {
+              "type": "object",
+              "patternProperties": {
+                "^[A-Z][A-Z0-9_]*$": {
+                  "type": "string"
+                }
+              },
+              "description": "Environment variables for this agent type"
+            },
+            "specialized_tools": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of specialized tools available to this agent type"
+            }
+          }
+        }
+      }
+    },
+    "session_layouts": {
+      "type": "object",
+      "description": "Predefined tmux session layouts",
+      "patternProperties": {
+        "^[a-zA-Z][a-zA-Z0-9-_]*$": {
+          "type": "object",
+          "required": ["description", "panes"],
+          "properties": {
+            "description": {
+              "type": "string",
+              "description": "Description of the layout"
+            },
+            "panes": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["position", "agent_type", "name"],
+                "properties": {
+                  "position": {
+                    "type": "string",
+                    "enum": ["top-left", "top-right", "bottom-left", "bottom-right", "left", "right", "center"],
+                    "description": "Position of the pane in the layout"
+                  },
+                  "size": {
+                    "type": "string",
+                    "pattern": "^\\d+%$",
+                    "description": "Size of the pane as percentage"
+                  },
+                  "agent_type": {
+                    "type": "string",
+                    "description": "Type of agent for this pane"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "Name identifier for this pane"
+                  },
+                  "windows": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "required": ["name"],
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "description": "Window name"
+                        },
+                        "command": {
+                          "type": "string",
+                          "description": "Command to run in this window"
+                        },
+                        "startup": {
+                          "type": "boolean",
+                          "description": "Whether this window starts automatically"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "tmux_options": {
+              "type": "object",
+              "properties": {
+                "main-pane-height": {
+                  "type": "string",
+                  "description": "Main pane height setting"
+                },
+                "main-pane-width": {
+                  "type": "string",
+                  "description": "Main pane width setting"
+                },
+                "remain-on-exit": {
+                  "type": "boolean",
+                  "description": "Keep panes open after command exit"
+                },
+                "mouse": {
+                  "type": "boolean",
+                  "description": "Enable mouse support"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "integration_settings": {
+      "type": "object",
+      "required": ["npm_scripts"],
+      "properties": {
+        "npm_scripts": {
+          "type": "object",
+          "patternProperties": {
+            "^[a-z][a-z0-9-]*$": {
+              "type": "string",
+              "description": "NPM script command"
+            }
+          }
+        },
+        "agent_mail": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable agent mail integration"
+            },
+            "mailbox_path": {
+              "type": "string",
+              "description": "Path to agent mail directory"
+            },
+            "mcp_server_path": {
+              "type": "string",
+              "description": "Path to MCP server"
+            },
+            "polling_interval": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Polling interval in seconds"
+            },
+            "auto_claim_tasks": {
+              "type": "boolean",
+              "description": "Automatically claim tasks from mail"
+            },
+            "task_routing": {
+              "type": "object",
+              "patternProperties": {
+                "^[a-zA-Z][a-zA-Z0-9-_]*$": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "beads_workflow": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable beads workflow integration"
+            },
+            "ready_command": {
+              "type": "string",
+              "description": "Command to check ready tasks"
+            },
+            "assign_command": {
+              "type": "string",
+              "description": "Command to assign tasks"
+            },
+            "close_command": {
+              "type": "string",
+              "description": "Command to close tasks"
+            },
+            "constraint_filtering": {
+              "type": "boolean",
+              "description": "Enable constraint-based filtering"
+            },
+            "auto_assignment": {
+              "type": "boolean",
+              "description": "Enable automatic task assignment"
+            },
+            "evidence_collection": {
+              "type": "boolean",
+              "description": "Enable evidence collection"
+            }
+          }
+        },
+        "git_workflow": {
+          "type": "object",
+          "properties": {
+            "auto_branch_creation": {
+              "type": "boolean",
+              "description": "Automatically create branches for tasks"
+            },
+            "branch_prefix": {
+              "type": "string",
+              "description": "Prefix for auto-created branches"
+            },
+            "commit_template": {
+              "type": "string",
+              "description": "Template for commit messages"
+            },
+            "pre_commit_hooks": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Pre-commit hook commands"
+            },
+            "auto_merge_enabled": {
+              "type": "boolean",
+              "description": "Enable automatic merging"
+            },
+            "merge_strategy": {
+              "type": "string",
+              "enum": ["merge", "squash", "rebase"],
+              "description": "Git merge strategy"
+            }
+          }
+        }
+      }
+    },
+    "monitoring": {
+      "type": "object",
+      "properties": {
+        "health_checks": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable health checks"
+            },
+            "interval": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Health check interval in seconds"
+            },
+            "timeout": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Health check timeout in seconds"
+            },
+            "retry_count": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Number of retries for health checks"
+            },
+            "checks": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of health check types"
+            }
+          }
+        },
+        "resource_monitoring": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable resource monitoring"
+            },
+            "interval": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Monitoring interval in seconds"
+            },
+            "metrics": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of metrics to monitor"
+            },
+            "thresholds": {
+              "type": "object",
+              "patternProperties": {
+                "^[a-z]+_(warning|critical)$": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100
+                }
+              }
+            }
+          }
+        },
+        "log_aggregation": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable log aggregation"
+            },
+            "log_directory": {
+              "type": "string",
+              "description": "Directory for aggregated logs"
+            },
+            "retention_days": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Number of days to retain logs"
+            },
+            "compression": {
+              "type": "boolean",
+              "description": "Enable log compression"
+            },
+            "levels": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["error", "warn", "info", "debug"]
+              }
+            },
+            "formats": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": ["json", "text"]
+              }
+            }
+          }
+        }
+      }
+    },
+    "performance": {
+      "type": "object",
+      "properties": {
+        "startup": {
+          "type": "object",
+          "properties": {
+            "parallel_initialization": {
+              "type": "boolean",
+              "description": "Enable parallel agent initialization"
+            },
+            "max_concurrent_agents": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Maximum concurrent agent startup"
+            },
+            "health_check_timeout": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Health check timeout during startup"
+            },
+            "fallback_timeout": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Fallback timeout for startup"
+            }
+          }
+        },
+        "scaling": {
+          "type": "object",
+          "properties": {
+            "auto_scale": {
+              "type": "boolean",
+              "description": "Enable automatic scaling"
+            },
+            "min_workers": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Minimum number of workers"
+            },
+            "max_workers": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Maximum number of workers"
+            },
+            "scale_up_threshold": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Threshold for scaling up"
+            },
+            "scale_down_threshold": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Threshold for scaling down"
+            },
+            "idle_timeout": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Idle timeout before scaling down"
+            }
+          }
+        },
+        "optimization": {
+          "type": "object",
+          "properties": {
+            "caching_enabled": {
+              "type": "boolean",
+              "description": "Enable caching"
+            },
+            "cache_size": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Maximum cache size"
+            },
+            "lazy_loading": {
+              "type": "boolean",
+              "description": "Enable lazy loading"
+            },
+            "resource_pooling": {
+              "type": "boolean",
+              "description": "Enable resource pooling"
+            },
+            "session_reuse": {
+              "type": "boolean",
+              "description": "Enable session reuse"
+            }
+          }
+        }
+      }
+    },
+    "security": {
+      "type": "object",
+      "properties": {
+        "agent_isolation": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable agent isolation"
+            },
+            "sandbox_mode": {
+              "type": "string",
+              "enum": ["restrictive", "permissive", "disabled"],
+              "description": "Sandbox mode for agents"
+            },
+            "allowed_paths": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Allowed file system paths"
+            },
+            "blocked_commands": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "Blocked commands"
+            },
+            "network_access": {
+              "type": "string",
+              "enum": ["restricted", "full", "disabled"],
+              "description": "Network access level"
+            }
+          }
+        },
+        "authentication": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable authentication"
+            },
+            "method": {
+              "type": "string",
+              "enum": ["token", "certificate", "basic"],
+              "description": "Authentication method"
+            },
+            "token_rotation": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Token rotation interval in seconds"
+            },
+            "session_timeout": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Session timeout in seconds"
+            }
+          }
+        },
+        "audit": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable audit logging"
+            },
+            "log_all_commands": {
+              "type": "boolean",
+              "description": "Log all agent commands"
+            },
+            "log_file_access": {
+              "type": "boolean",
+              "description": "Log file access"
+            },
+            "retention_days": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Audit log retention days"
+            }
+          }
+        }
+      }
+    },
+    "development": {
+      "type": "object",
+      "properties": {
+        "debug_mode": {
+          "type": "boolean",
+          "description": "Enable debug mode"
+        },
+        "verbose_logging": {
+          "type": "boolean",
+          "description": "Enable verbose logging"
+        },
+        "mock_mode": {
+          "type": "boolean",
+          "description": "Enable mock mode for testing"
+        },
+        "test_data": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable test data"
+            },
+            "fixtures_path": {
+              "type": "string",
+              "description": "Path to test fixtures"
+            }
+          }
+        },
+        "experimental_features": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "description": "Enable experimental features"
+            },
+            "features": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              },
+              "description": "List of experimental features"
+            }
+          }
+        }
+      }
+    },
+    "defaults": {
+      "type": "object",
+      "required": ["agent_type", "session_layout"],
+      "properties": {
+        "agent_type": {
+          "type": "string",
+          "description": "Default agent type"
+        },
+        "session_layout": {
+          "type": "string",
+          "description": "Default session layout"
+        },
+        "startup_layout": {
+          "type": "string",
+          "description": "Default startup layout"
+        },
+        "log_level": {
+          "type": "string",
+          "enum": ["error", "warn", "info", "debug"],
+          "description": "Default log level"
+        },
+        "timeout": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Default timeout in seconds"
+        },
+        "retry_count": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Default retry count"
+        },
+        "auto_cleanup": {
+          "type": "boolean",
+          "description": "Enable automatic cleanup"
+        }
+      }
+    }
+  }
+}
