@@ -27,17 +27,20 @@ See [SETUP.md](SETUP.md) for complete configuration guide.
 - **.claude/**: Response Awareness framework (20+ skills, 23 specialized agents)
 - **scripts/maf/**: 170+ operational scripts (spawn, monitor, coordinate)
 - **mcp_agent_mail/**: Complete communication layer
+- **Telegram Bot**: Remote agent coordination and monitoring
 - **.maf/config/**: Configuration templates
 - **docs/**: Comprehensive documentation
 
 ## Documentation
 
-- [SETUP.md](SETUP.md) - Complete setup guide
+- [SETUP.md](SETUP.md) - Complete setup guide (includes Telegram bot setup)
+- [docs/telegram-maf-setup.md](docs/telegram-maf-setup.md) - Telegram bot configuration
 - [docs/agents.md](docs/agents.md) - Agent operations (1,180 lines)
 - [docs/operations/](docs/operations/) - Operational guides
 
 ## Versioning
 
+- **v0.1.1**: Added Telegram bot integration
 - **v0.1.0**: Initial distribution from roundtable
 - See [Releases](https://github.com/yourorg/maf/releases) for changelog
 

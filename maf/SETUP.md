@@ -260,12 +260,97 @@ ls -la maf/
 git subtree add --prefix=maf https://github.com/yourorg/maf main --squash
 ```
 
+## Telegram Bot Integration (Optional)
+
+MAF includes a Telegram bot for remote agent coordination and monitoring.
+
+### Creating Your Bot
+
+**Step 1: Create a Telegram Bot**
+
+1. Open Telegram and search for `@BotFather`
+2. Send `/newbot` command
+3. Follow the prompts to:
+   - Choose a name for your bot (e.g., "MyProject MAF Bot")
+   - Choose a username (e.g., `myproject_maf_bot`)
+4. **Copy the bot token** (format: `123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ`)
+
+**Step 2: (Optional) Customize Your Bot**
+
+- Set description: `/setdescription`
+- Set about text: `/setabouttext`
+- Set profile picture: `/setuserpic`
+- Enable commands: `/setcommands`
+
+### Setup
+
+```bash
+# 1. Configure the bot token
+cp maf/.agent-mail/telegram.env.example .agent-mail/telegram.env
+# Edit .agent-mail/telegram.env and set your bot token:
+# TELEGRAM_BOT_TOKEN=123456789:ABCdefGhIJKlmNoPQRsTUVwxyZ
+chmod 600 .agent-mail/telegram.env
+
+# 2. Install the service (requires sudo)
+sudo maf/scripts/setup-telegram-bot.sh
+
+# 3. Start the bot
+maf/scripts/manage-telegram-bot.sh start
+```
+
+**Important Security Notes:**
+- Never commit `telegram.env` to git (it's in `.gitignore`)
+- Keep your bot token secret
+- The bot token allows full control of your bot
+- If leaked, use `/revoke` in BotFather to generate a new token
+
+### Available Commands
+
+Once your bot is running, send these commands to it in Telegram:
+
+- `/start` - Initialize the bot
+- `/broadcast` - Execute broadcast-role-prompts.sh
+- `/broadcast-pack` - Show/set the active prompt pack
+- `/broadcast-targeted` - Prompt only the roles that need action
+- `/activity` - Check agent activity
+- `/snapshot` - Beads snapshot + tmux activity
+- `/stale` - Stale in-progress beads (default: 3 days)
+- `/status` - System status
+
+### Management Commands
+
+```bash
+# Start the bot
+maf/scripts/manage-telegram-bot.sh start
+
+# Stop the bot
+maf/scripts/manage-telegram-bot.sh stop
+
+# Restart the bot
+maf/scripts/manage-telegram-bot.sh restart
+
+# Check status
+maf/scripts/manage-telegram-bot.sh status
+
+# View logs
+maf/scripts/manage-telegram-bot.sh logs
+
+# Test locally (not as service)
+maf/scripts/manage-telegram-bot.sh test
+
+# Uninstall service
+sudo maf/scripts/manage-telegram-bot.sh uninstall
+```
+
+See [docs/telegram-maf-setup.md](docs/telegram-maf-setup.md) for complete guide.
+
 ## Next Steps
 
 1. **Read the full documentation**: `maf/docs/agents.md`
 2. **Explore Response Awareness**: `maf/.claude/skills/`
 3. **Customize your agent team**: Edit `.maf/config/agent-topology.json`
-4. **Join the community**: github.com/yourorg/maf/discussions
+4. **Set up Telegram bot** (optional): See above
+5. **Join the community**: github.com/yourorg/maf/discussions
 
 ## Support
 
