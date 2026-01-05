@@ -5,12 +5,20 @@
 set -euo pipefail
 
 # Script directory and project root detection
-SCRIPT_DIR="${SCRIPT_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"
-# MAF scripts are in scripts/maf/lib/, so project root is three levels up
-PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$SCRIPT_DIR/../../.." && pwd)}"
+# Use unique variable name to avoid inheriting parent's SCRIPT_DIR
+TMUX_UTILS_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# MAF scripts are in scripts/maf/lib/ or maf/scripts/maf/lib/
+# Detect subtree layout and adjust PROJECT_ROOT accordingly
+if [[ "$TMUX_UTILS_SCRIPT_DIR" == *"/maf/scripts/maf/lib" ]]; then
+    # Subtree layout: maf/scripts/maf/lib/ -> go up 4 levels
+    PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$TMUX_UTILS_SCRIPT_DIR/../../../.." && pwd)}"
+else
+    # Direct layout: scripts/maf/lib/ -> go up 3 levels
+    PROJECT_ROOT="${PROJECT_ROOT:-$(cd "$TMUX_UTILS_SCRIPT_DIR/../../.." && pwd)}"
+fi
 
 # Source dependencies relative to this repo
-source "$SCRIPT_DIR/error-handling.sh"
+source "$TMUX_UTILS_SCRIPT_DIR/error-handling.sh"
 
 # Configuration defaults
 TMUX_SESSION_PREFIX="maf-agent"
@@ -19,7 +27,7 @@ TMUX_WORK_DIR="$PROJECT_ROOT"
 TMUX_CONFIG_FILE="$PROJECT_ROOT/.maf/tmux.conf"
 
 # Colors for output
-source "$SCRIPT_DIR/../colors.sh" 2>/dev/null || {
+source "$TMUX_UTILS_SCRIPT_DIR/../colors.sh" 2>/dev/null || {
     RED='\033[0;31m'
     GREEN='\033[0;32m'
     YELLOW='\033[1;33m'
