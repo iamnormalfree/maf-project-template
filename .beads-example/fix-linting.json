@@ -1,0 +1,14 @@
+{
+  "id": "fix-linting",
+  "summary": "Fix all linting errors in project",
+  "description": "Run npm run lint and fix all linting errors across the codebase",
+  "tags": [
+    "maintenance",
+    "linting",
+    "quality"
+  ],
+  "priority": "medium",
+  "status": "ready",
+  "assignee": null,
+  "created_at": "2025-12-16T08:36:07.418Z"
+}

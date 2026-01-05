@@ -1,0 +1,12 @@
+# Dependencies
+node_modules/
+
+# Build artifacts
+dist/
+*.log
+
+# Runtime state (examples only)
+.git/
+daemon.*
+*.db
+*.lock

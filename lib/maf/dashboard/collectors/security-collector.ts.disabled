@@ -1,0 +1,453 @@
+// ABOUTME: Security performance data collector for MAF dashboard
+// ABOUTME: Collects and aggregates security performance metrics for unified monitoring
+
+import { 
+  SecurityPerformanceTracker, 
+  SecurityPerformanceReport,
+  ExtendedSecurityMetricsWithPerformance 
+} from '../../security/types/performance-tracking';
+
+import { ExtendedSecurityMetrics } from '../types/network-metrics';
+import { securityPerformanceTracker } from '../../security/performance-tracker';
+
+/**
+ * Security Performance Data Collector
+ * 
+ * Integrates security performance tracking with the dashboard monitoring system:
+ * - Collects security-specific performance metrics
+ * - Aggregates data for unified dashboard display
+ * - Provides CPX41 compliance monitoring
+ * - Enables load testing and impact analysis
+ */
+export class SecurityPerformanceCollector {
+  private performanceTracker: SecurityPerformanceTracker;
+  private collectionInterval: NodeJS.Timeout | null = null;
+  private isCollecting: boolean = false;
+  
+  // Collection configuration
+  private readonly collectionIntervalMs = 5000; // 5 seconds
+  private readonly maxHistorySize = 1000; // Keep last 1000 data points
+  
+  // Performance history for trend analysis
+  private performanceHistory: Array<{
+    timestamp: number;
+    metrics: ExtendedSecurityMetricsWithPerformance;
+  }> = [];
+
+  constructor(performanceTracker?: SecurityPerformanceTracker) {
+    this.performanceTracker = performanceTracker || securityPerformanceTracker;
+  }
+
+  /**
+   * Start collecting security performance data
+   */
+  startCollection(): void {
+    if (this.isCollecting) {
+      console.warn('Security performance collection already started');
+      return;
+    }
+
+    this.isCollecting = true;
+    this.collectionInterval = setInterval(() => {
+      this.collectPerformanceData();
+    }, this.collectionIntervalMs);
+
+    console.log('Security performance data collection started');
+  }
+
+  /**
+   * Stop collecting security performance data
+   */
+  stopCollection(): void {
+    if (!this.isCollecting) {
+      return;
+    }
+
+    this.isCollecting = false;
+    if (this.collectionInterval) {
+      clearInterval(this.collectionInterval);
+      this.collectionInterval = null;
+    }
+
+    console.log('Security performance data collection stopped');
+  }
+
+  /**
+   * Get current security performance metrics
+   */
+  getCurrentMetrics(): ExtendedSecurityMetricsWithPerformance {
+    return this.performanceTracker.getExtendedSecurityMetrics();
+  }
+
+  /**
+   * Get performance history for analysis
+   */
+  getPerformanceHistory(timeRange?: { start: number; end: number }): Array<{
+    timestamp: number;
+    metrics: ExtendedSecurityMetricsWithPerformance;
+  }> {
+    if (!timeRange) {
+      return [...this.performanceHistory];
+    }
+
+    return this.performanceHistory.filter(entry => 
+      entry.timestamp >= timeRange.start && entry.timestamp <= timeRange.end
+    );
+  }
+
+  /**
+   * Get aggregated performance statistics
+   */
+  getPerformanceStatistics(timeRange?: { start: number; end: number }) {
+    const history = this.getPerformanceHistory(timeRange);
+    
+    if (history.length === 0) {
+      return this.getDefaultStatistics();
+    }
+
+    const performanceData = history.map(h => h.metrics.performanceTracking);
+    
+    return {
+      timeRange: timeRange || { 
+        start: history[0]?.timestamp || Date.now(), 
+        end: history[history.length - 1]?.timestamp || Date.now() 
+      },
+      sampleCount: history.length,
+      
+      // Session statistics
+      sessions: {
+        averageActive: performanceData.reduce((sum, d) => sum + d.activeSessions, 0) / performanceData.length,
+        peakActive: Math.max(...performanceData.map(d => d.activeSessions)),
+        totalSessions: Math.max(...performanceData.map(d => d.totalSessions))
+      },
+      
+      // Performance metrics
+      performance: {
+        averageLatency: performanceData.reduce((sum, d) => sum + d.averageLatency, 0) / performanceData.length,
+        peakLatency: Math.max(...performanceData.map(d => d.averageLatency)),
+        averageOpsPerSecond: performanceData.reduce((sum, d) => sum + d.operationsPerSecond, 0) / performanceData.length,
+        peakOpsPerSecond: Math.max(...performanceData.map(d => d.operationsPerSecond)),
+        averageErrorRate: performanceData.reduce((sum, d) => sum + d.errorRate, 0) / performanceData.length,
+        peakErrorRate: Math.max(...performanceData.map(d => d.errorRate))
+      },
+      
+      // Resource utilization
+      resources: {
+        averageCpuUsage: performanceData.reduce((sum, d) => sum + d.currentCpuUsage, 0) / performanceData.length,
+        peakCpuUsage: Math.max(...performanceData.map(d => d.currentCpuUsage)),
+        averageMemoryUsage: performanceData.reduce((sum, d) => sum + d.currentMemoryUsage, 0) / performanceData.length,
+        peakMemoryUsage: Math.max(...performanceData.map(d => d.currentMemoryUsage))
+      },
+      
+      // Budget utilization
+      budget: {
+        averageEfficiency: performanceData.reduce((sum, d) => sum + d.budgetUtilization.efficiency, 0) / performanceData.length,
+        peakEfficiency: Math.max(...performanceData.map(d => d.budgetUtilization.efficiency)),
+        averageAllocated: performanceData.reduce((sum, d) => sum + d.budgetUtilization.allocated, 0) / performanceData.length,
+        averageUsed: performanceData.reduce((sum, d) => sum + d.budgetUtilization.used, 0) / performanceData.length
+      },
+      
+      // Compliance scores
+      compliance: {
+        averageScore: performanceData.reduce((sum, d) => sum + d.complianceScore, 0) / performanceData.length,
+        minScore: Math.min(...performanceData.map(d => d.complianceScore)),
+        maxScore: Math.max(...performanceData.map(d => d.complianceScore)),
+        compliancePercentage: performanceData.filter(d => d.complianceScore >= 80).length / performanceData.length * 100
+      }
+    };
+  }
+
+  /**
+   * Run a load test for security operations
+   */
+  async runLoadTest(config: {
+    sessionId?: string;
+    concurrentOperations: number;
+    testDuration: number;
+    operationTypes: string[];
+    targetThroughput: number;
+  }): Promise<SecurityPerformanceReport> {
+    const sessionId = config.sessionId || 'load-test-' + Date.now();
+    
+    // Start load test session
+    const session = this.performanceTracker.startSession(sessionId, {
+      maxDuration: config.testDuration,
+      enableDetailedTracking: true,
+      resourceMonitoringInterval: 1000,
+      loadTestConfig: {
+        concurrentOperations: config.concurrentOperations,
+        testDuration: config.testDuration,
+        rampUpPeriod: Math.min(10000, config.testDuration / 4), // 25% of test duration, max 10s
+        operationTypes: config.operationTypes as any,
+        targetThroughput: config.targetThroughput,
+        maxAcceptableLatency: 1000, // 1 second
+        resourceLimits: {
+          maxCpuUsage: 80,
+          maxMemoryUsage: 1024, // 1GB
+          maxDiskIO: 1000000, // 1MB/s
+          maxNetworkIO: 1000000 // 1MB/s
+        }
+      }
+    });
+
+    console.log('Starting security load test: ' + sessionId);
+    console.log('Concurrent operations: ' + config.concurrentOperations);
+    console.log('Test duration: ' + config.testDuration + 'ms');
+
+    // Simulate load test operations
+    await this.simulateLoadTestOperations(sessionId, config);
+
+    // End session and get report
+    const report = this.performanceTracker.endSession(sessionId);
+    
+    console.log('Load test completed: ' + sessionId);
+    console.log('Compliance status: ' + (report.compliance.compliant ? 'COMPLIANT' : 'NON-COMPLIANT'));
+    console.log('Total operations: ' + report.totalOperations);
+    console.log('Average latency: ' + report.operationStats.averageLatency.toFixed(2) + 'ms');
+
+    return report;
+  }
+
+  /**
+   * Get real-time performance alerts
+   */
+  getPerformanceAlerts(): Array<{
+    id: string;
+    type: 'budget_warning' | 'latency_spike' | 'resource_spike' | 'compliance_violation';
+    severity: 'low' | 'medium' | 'high' | 'critical';
+    message: string;
+    timestamp: number;
+    metrics: any;
+  }> {
+    const currentMetrics = this.getCurrentMetrics();
+    const alerts = [];
+    
+    // Budget utilization alerts
+    if (currentMetrics.performanceTracking.budgetUtilization.efficiency > 85) {
+      alerts.push({
+        id: 'budget-warning-' + Date.now(),
+        type: 'budget_warning' as const,
+        severity: currentMetrics.performanceTracking.budgetUtilization.efficiency > 95 ? 'critical' : 'high',
+        message: 'Security budget utilization at ' + currentMetrics.performanceTracking.budgetUtilization.efficiency.toFixed(1) + '%',
+        timestamp: Date.now(),
+        metrics: currentMetrics.performanceTracking.budgetUtilization
+      });
+    }
+    
+    // Latency alerts
+    if (currentMetrics.performanceTracking.averageLatency > 100) {
+      alerts.push({
+        id: 'latency-spike-' + Date.now(),
+        type: 'latency_spike' as const,
+        severity: currentMetrics.performanceTracking.averageLatency > 500 ? 'critical' : 'medium',
+        message: 'High latency detected: ' + currentMetrics.performanceTracking.averageLatency.toFixed(2) + 'ms',
+        timestamp: Date.now(),
+        metrics: { averageLatency: currentMetrics.performanceTracking.averageLatency }
+      });
+    }
+    
+    // Resource usage alerts
+    if (currentMetrics.performanceTracking.currentCpuUsage > 80) {
+      alerts.push({
+        id: 'cpu-spike-' + Date.now(),
+        type: 'resource_spike' as const,
+        severity: currentMetrics.performanceTracking.currentCpuUsage > 90 ? 'critical' : 'high',
+        message: 'High CPU usage: ' + currentMetrics.performanceTracking.currentCpuUsage.toFixed(1) + '%',
+        timestamp: Date.now(),
+        metrics: { cpuUsage: currentMetrics.performanceTracking.currentCpuUsage }
+      });
+    }
+    
+    // Compliance alerts
+    if (currentMetrics.performanceTracking.complianceScore < 80) {
+      alerts.push({
+        id: 'compliance-violation-' + Date.now(),
+        type: 'compliance_violation' as const,
+        severity: currentMetrics.performanceTracking.complianceScore < 60 ? 'critical' : 'medium',
+        message: 'CPX41 compliance score below threshold: ' + currentMetrics.performanceTracking.complianceScore.toFixed(1),
+        timestamp: Date.now(),
+        metrics: { complianceScore: currentMetrics.performanceTracking.complianceScore }
+      });
+    }
+    
+    return alerts;
+  }
+
+  /**
+   * Export performance data for analysis
+   */
+  exportPerformanceData(timeRange?: { start: number; end: number }): {
+    metadata: {
+      exportedAt: number;
+      timeRange: { start: number; end: number };
+      dataPoints: number;
+    };
+    data: Array<{
+      timestamp: number;
+      metrics: ExtendedSecurityMetricsWithPerformance;
+    }>;
+  } {
+    const history = this.getPerformanceHistory(timeRange);
+    
+    return {
+      metadata: {
+        exportedAt: Date.now(),
+        timeRange: timeRange || { 
+          start: history[0]?.timestamp || Date.now(), 
+          end: history[history.length - 1]?.timestamp || Date.now() 
+        },
+        dataPoints: history.length
+      },
+      data: history
+    };
+  }
+
+  // Private methods
+
+  /**
+   * Collect current performance data and store in history
+   */
+  private collectPerformanceData(): void {
+    try {
+      const metrics = this.getCurrentMetrics();
+      const timestamp = Date.now();
+      
+      // Add to history
+      this.performanceHistory.push({
+        timestamp,
+        metrics
+      });
+      
+      // Trim history if too large
+      if (this.performanceHistory.length > this.maxHistorySize) {
+        this.performanceHistory = this.performanceHistory.slice(-this.maxHistorySize);
+      }
+      
+    } catch (error) {
+      console.warn('Failed to collect security performance data:', error);
+    }
+  }
+
+  /**
+   * Simulate load test operations
+   */
+  private async simulateLoadTestOperations(sessionId: string, config: any): Promise<void> {
+    const startTime = Date.now();
+    const operationInterval = 1000 / config.targetThroughput; // Calculate interval for target throughput
+    
+    const simulateOperation = async (operationType: string): Promise<void> => {
+      const operationStartTime = Date.now();
+      
+      // Simulate different operation complexities
+      let complexity = 1;
+      switch (operationType) {
+        case 'policy_validation':
+          complexity = 0.8;
+          break;
+        case 'network_check':
+          complexity = 1.2;
+          break;
+        case 'filesystem_access':
+          complexity = 1.0;
+          break;
+        case 'resource_enforcement':
+          complexity = 0.6;
+          break;
+        case 'boundary_test':
+          complexity = 1.5;
+          break;
+        case 'audit_log':
+          complexity = 0.4;
+          break;
+      }
+      
+      // Simulate operation duration based on complexity
+      const duration = Math.random() * 50 * complexity + 10; // 10-60ms depending on complexity
+      
+      // Record the operation
+      this.performanceTracker.recordOperation(sessionId, {
+        id: 'op-' + Math.random().toString(36).substr(2, 9),
+        type: operationType as any,
+        startTime: operationStartTime,
+        endTime: operationStartTime + duration,
+        duration,
+        result: Math.random() > 0.05 ? 'success' : 'failure', // 95% success rate
+        resourceUsage: {
+          cpuUsage: Math.random() * 20 + 5, // 5-25%
+          memoryUsage: Math.random() * 50 + 10, // 10-60MB
+          diskIO: Math.random() * 1000, // 0-1KB
+          networkIO: Math.random() * 1000 // 0-1KB
+        },
+        metadata: {
+          complexity,
+          sessionId
+        }
+      });
+    };
+    
+    // Run operations for the specified duration
+    while (Date.now() - startTime < config.testDuration) {
+      const promises = [];
+      
+      // Create concurrent operations
+      for (let i = 0; i < config.concurrentOperations; i++) {
+        const operationType = config.operationTypes[Math.floor(Math.random() * config.operationTypes.length)];
+        promises.push(simulateOperation(operationType));
+      }
+      
+      // Wait for operations to complete
+      await Promise.all(promises);
+      
+      // Wait for next batch
+      if (Date.now() - startTime < config.testDuration) {
+        await new Promise(resolve => setTimeout(resolve, operationInterval));
+      }
+    }
+  }
+
+  /**
+   * Get default statistics when no history is available
+   */
+  private getDefaultStatistics() {
+    return {
+      timeRange: { start: Date.now(), end: Date.now() },
+      sampleCount: 0,
+      sessions: {
+        averageActive: 0,
+        peakActive: 0,
+        totalSessions: 0
+      },
+      performance: {
+        averageLatency: 0,
+        peakLatency: 0,
+        averageOpsPerSecond: 0,
+        peakOpsPerSecond: 0,
+        averageErrorRate: 0,
+        peakErrorRate: 0
+      },
+      resources: {
+        averageCpuUsage: 0,
+        peakCpuUsage: 0,
+        averageMemoryUsage: 0,
+        peakMemoryUsage: 0
+      },
+      budget: {
+        averageEfficiency: 0,
+        peakEfficiency: 0,
+        averageAllocated: 0,
+        averageUsed: 0
+      },
+      compliance: {
+        averageScore: 100,
+        minScore: 100,
+        maxScore: 100,
+        compliancePercentage: 100
+      }
+    };
+  }
+}
+
+/**
+ * Singleton instance for global use
+ */
+export const securityPerformanceCollector = new SecurityPerformanceCollector();

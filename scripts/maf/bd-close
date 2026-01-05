@@ -1,0 +1,223 @@
+#!/bin/bash
+# ABOUTME: MAF Bead Closure Wrapper with Automatic Receipt Generation
+# ABOUTME: Wraps `bd close` to ensure receipts are generated before closing beads
+
+set -euo pipefail
+
+# Source MAF utilities
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+MAF_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
+
+# Colors for terminal output
+if [ -f "${SCRIPT_DIR}/lib/colors.sh" ]; then
+    source "${SCRIPT_DIR}/lib/colors.sh"
+else
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    NC='\033[0m'
+fi
+
+# Logging functions
+log_info() {
+    echo -e "${BLUE}[INFO]${NC} $*"
+}
+
+log_success() {
+    echo -e "${GREEN}[SUCCESS]${NC} $*"
+}
+
+log_warning() {
+    echo -e "${YELLOW}[WARNING]${NC} $*"
+}
+
+log_error() {
+    echo -e "${RED}[ERROR]${NC} $*" >&2
+}
+
+# Show usage
+show_usage() {
+    cat << EOF
+MAF Bead Closure Wrapper - Automatic Receipt Generation
+
+USAGE:
+    bd-close <bead_id> [--skip-receipt] [--post-receipt]
+
+OPTIONS:
+    --skip-receipt    Skip receipt generation (not recommended)
+    --post-receipt    Post receipt to Agent Mail after generation
+    -h, --help        Show this help message
+
+DESCRIPTION:
+    This wrapper automates receipt generation before closing beads:
+    1. Generates receipt using ./scripts/maf/receipt.sh
+    2. Saves receipt to receipts/<bead-id>.md
+    3. Optionally posts to Agent Mail
+    4. Runs bd close <bead-id>
+
+EXAMPLES:
+    bd-close roundtable-abc
+    bd-close roundtable-abc --post-receipt
+
+EOF
+}
+
+# Parse arguments
+BEAD_ID=""
+SKIP_RECEIPT=false
+POST_RECEIPT=false
+
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --skip-receipt)
+            SKIP_RECEIPT=true
+            shift
+            ;;
+        --post-receipt)
+            POST_RECEIPT=true
+            shift
+            ;;
+        -h|--help)
+            show_usage
+            exit 0
+            ;;
+        -*)
+            log_error "Unknown option: $1"
+            show_usage
+            exit 1
+            ;;
+        *)
+            if [ -z "$BEAD_ID" ]; then
+                BEAD_ID="$1"
+            else
+                log_error "Multiple bead IDs provided"
+                show_usage
+                exit 1
+            fi
+            shift
+            ;;
+    esac
+done
+
+# Validate bead ID
+if [ -z "$BEAD_ID" ]; then
+    log_error "Bead ID required"
+    show_usage
+    exit 1
+fi
+
+# Change to project root
+cd "$MAF_ROOT"
+
+log_info "=== MAF Bead Closure Workflow ==="
+log_info "Bead ID: ${GREEN}${BEAD_ID}${NC}"
+echo ""
+
+# Step 1: Check if bead exists
+log_info "Step 1: Verifying bead exists..."
+if ! bd show "$BEAD_ID" &>/dev/null; then
+    log_error "Bead not found: ${BEAD_ID}"
+    exit 1
+fi
+log_success "Bead found"
+echo ""
+
+# Step 2: Generate receipt (unless skipped)
+if [ "$SKIP_RECEIPT" = false ]; then
+    log_info "Step 2: Generating receipt..."
+
+    # Create receipts directory
+    mkdir -p receipts
+
+    # Get current agent info from tmux if available
+    CURRENT_AGENT="${MAF_AGENT_NAME:-unknown}"
+    if [ -n "${TMUX_PANE:-}" ]; then
+        # Try to get agent name from topology
+        PANE_INDEX=$(tmux display-message -p '#P' 2>/dev/null || echo "")
+        if [ -n "$PANE_INDEX" ]; then
+            AGENT_FROM_TOPOLOGY=$(jq -r ".panes[] | select(.index == $PANE_INDEX) | .agent_name" .maf/config/agent-topology.json 2>/dev/null || echo "")
+            if [ -n "$AGENT_FROM_TOPOLOGY" ] && [ "$AGENT_FROM_TOPOLOGY" != "null" ]; then
+                CURRENT_AGENT="$AGENT_FROM_TOPOLOGY"
+            fi
+        fi
+    fi
+
+    # Generate receipt
+    RECEIPT_FILE="receipts/${BEAD_ID}.md"
+
+    if MAF_AGENT_NAME="$CURRENT_AGENT" ./scripts/maf/receipt.sh "$BEAD_ID" > "$RECEIPT_FILE"; then
+        log_success "Receipt generated: ${GREEN}${RECEIPT_FILE}${NC}"
+
+        # Show receipt preview
+        echo ""
+        log_info "Receipt preview:"
+        echo "---"
+        head -30 "$RECEIPT_FILE"
+        echo "---"
+        echo "     (full receipt saved to ${RECEIPT_FILE})"
+        echo ""
+
+        # Post to Agent Mail if requested
+        if [ "$POST_RECEIPT" = true ]; then
+            log_info "Posting receipt to Agent Mail..."
+            # This would use the MCP Agent Mail API
+            log_warning "Agent Mail posting not yet implemented"
+            echo ""
+        fi
+    else
+        log_error "Failed to generate receipt"
+        log_info "You can still close the bead with: bd close $BEAD_ID"
+        exit 1
+    fi
+else
+    log_warning "Skipping receipt generation (--skip-receipt flag)"
+    echo ""
+fi
+
+# Step 3: Verify Acceptance Criteria (PRE-CLOSE GATE)
+log_info "Step 3: Verifying acceptance criteria..."
+
+# Check if verify-ac script exists
+if [ -x "./scripts/maf/verify-ac.sh" ]; then
+    # Run AC verification
+    if ! ./scripts/maf/verify-ac.sh "$BEAD_ID"; then
+        log_error ""
+        log_error "=== ACCEPTANCE CRITERIA NOT MET ==="
+        log_error "Bead ${BEAD_ID} cannot be closed until acceptance criteria are verified."
+        log_error ""
+        log_info "Please address the failures above and try again."
+        log_info ""
+        log_info "Common fixes:"
+        log_info "  - Run tests: pnpm test"
+        log_info "  - Create missing files: touch <file>"
+        log_info "  - Verify commands work: <command> --help"
+        log_info ""
+        log_info "To skip AC verification (not recommended):"
+        log_info "  ./scripts/maf/bd-close $BEAD_ID --skip-verification"
+        exit 1
+    fi
+else
+    log_warn "verify-ac.sh not found - skipping acceptance criteria verification"
+    log_warn "Consider implementing: scripts/maf/verify-ac.sh"
+fi
+
+# Step 4: Close the bead
+log_info "Step 3: Closing bead..."
+if bd close "$BEAD_ID"; then
+    log_success "Bead ${GREEN}${BEAD_ID}${NC} closed successfully"
+    echo ""
+
+    # Summary
+    if [ "$SKIP_RECEIPT" = false ]; then
+        log_info "Receipt saved to: ${GREEN}receipts/${BEAD_ID}.md${NC}"
+        log_info "Ledger saved to: ${GREEN}.bead-ledger/${BEAD_ID}.json${NC}"
+    fi
+
+    log_success "=== Closure workflow complete ==="
+else
+    log_error "Failed to close bead"
+    exit 1
+fi
+
+exit 0

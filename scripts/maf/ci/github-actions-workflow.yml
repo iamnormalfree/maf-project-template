@@ -1,0 +1,204 @@
+# Minimal GitHub Actions workflow for MAF CI Review Gates
+# Add this to .github/workflows/maf-review-gate.yml
+
+name: MAF Review Gate
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+
+jobs:
+  review-gate:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+    
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Detect changes and determine risk
+        id: detect
+        run: |
+          # Determine if Tier 1 files changed
+          TIER1_FILES=$(git diff --name-only origin/main | grep -E "(lib/instant-profile\.ts|lib/tdsr-calculator\.ts|lib/property-valuation\.ts)" || true)
+          echo "tier1_files<<EOF" >> $GITHUB_OUTPUT
+          echo "$TIER1_FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          
+          # Determine tier from branch name or PR labels
+          if [[ "$GITHUB_HEAD_REF" =~ ^heavy-|^full- ]]; then
+            echo "tier=HEAVY" >> $GITHUB_OUTPUT
+          elif [[ "$GITHUB_HEAD_REF" =~ ^medium- ]]; then
+            echo "tier=MEDIUM" >> $GITHUB_OUTPUT
+          else
+            echo "tier=LIGHT" >> $GITHUB_OUTPUT
+          fi
+          
+          # Count Tier 1 files for risk assessment
+          TIER1_COUNT=$(echo "$TIER1_FILES" | wc -l)
+          if [ "$TIER1_COUNT" -gt 0 ]; then
+            echo "risk=HIGH" >> $GITHUB_OUTPUT
+          else
+            echo "risk=LOW" >> $GITHUB_OUTPUT
+          fi
+          
+      - name: Run tests
+        run: npm test -- --passWithNoTests
+        
+      - name: Generate Codex review
+        id: codex
+        run: |
+          # Simulate Codex review - replace with actual Codex API call
+          cat > reviewer-codex.json << 'EOF'
+          {
+            "issues": 2,
+            "blocking": 0,
+            "notes": [
+              "Minor style improvements needed",
+              "Consider adding more unit tests"
+            ]
+          }
+          EOF
+          
+          # Check for any test failures that would be blocking
+          if [ $? -ne 0 ]; then
+            echo '{"issues": 1, "blocking": 1, "notes": ["Tests failing"]}' > reviewer-codex.json
+          fi
+          
+      - name: Generate GPT-5 review (if required)
+        id: gpt5
+        if: steps.detect.outputs.risk == 'HIGH' || steps.detect.outputs.tier == 'HEAVY' || steps.detect.outputs.tier == 'FULL'
+        run: |
+          # Simulate GPT-5 review - replace with actual GPT-5 API call
+          cat > reviewer-gpt5.json << 'EOF'
+          {
+            "issues": 3,
+            "blocking": 0,
+            "notes": [
+              "Architecture looks sound",
+              "Consider performance implications",
+              "Update documentation for new patterns"
+            ]
+          }
+          EOF
+          
+      - name: Prepare gate input
+        run: |
+          # Extract PR number for taskId
+          PR_NUMBER=$(echo "$GITHUB_REF" | sed 's/refs\/pull\/\([0-9]*\)\/merge/\1/')
+          
+          # Build gate input JSON
+          cat > gate-input.json << EOF
+          {
+            "taskId": "CAN-PR-${PR_NUMBER}",
+            "tier": "${{ steps.detect.outputs.tier }}",
+            "risk": "${{ steps.detect.outputs.risk }}",
+            "tier1Files": [
+              $(printf '"%s",' $(echo '${{ steps.detect.outputs.tier1_files }}' | tr '\n' ' ') | sed 's/,$//')
+            ],
+            "codex": $(cat reviewer-codex.json)
+          }
+          EOF
+          
+          # Add GPT-5 review if generated
+          if [ -f reviewer-gpt5.json ]; then
+            sed -i 's/}$/,\n  "gpt5": $(cat reviewer-gpt5.json)\n}/' gate-input.json
+          fi
+          
+      - name: Run MAF CI Gate
+        id: gate
+        run: |
+          # Run gate and capture output
+          GATE_OUTPUT=$(npm run maf:ci:gate -- --input gate-input.json)
+          GATE_EXIT_CODE=$?
+          
+          # Parse output for GitHub status
+          GATE_SUCCESS=$(echo "$GATE_OUTPUT" | jq -r '.success // false')
+          GATE_REASON=$(echo "$GATE_OUTPUT" | jq -r '.reason // "Unknown"')
+          ESCALATION=$(echo "$GATE_OUTPUT" | jq -r '.escalationRecommended // false')
+          
+          # Set outputs for later steps
+          echo "success=$GATE_SUCCESS" >> $GITHUB_OUTPUT
+          echo "exit_code=$GATE_EXIT_CODE" >> $GITHUB_OUTPUT
+          echo "reason=$GATE_REASON" >> $GITHUB_OUTPUT
+          echo "escalation=$ESCALATION" >> $GITHUB_OUTPUT
+          
+          # Display full output for debugging
+          echo "$GATE_OUTPUT"
+          
+      - name: Comment PR with results
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const success = '${{ steps.gate.outputs.success }}' === 'true';
+            const reason = '${{ steps.gate.outputs.reason }}';
+            const escalation = '${{ steps.gate.outputs.escalation }}' === 'true';
+            const exitCode = '${{ steps.gate.outputs.exit_code }}';
+            
+            let emoji = success ? '✅' : '❌';
+            let status = success ? 'PASSED' : 'BLOCKED';
+            let color = success ? '28a745' : 'd73a49';
+            
+            let comment = `## ${emoji} MAF Review Gate: ${status}
+            
+            **Exit Code:** ${exitCode}
+            **Reason:** ${reason}
+            **Escalation Recommended:** ${escalation ? '⚠️ Yes' : 'No'}
+            
+            `;
+            
+            if (!success) {
+              comment += `
+            ### 🔧 Required Actions
+            `;
+              if (exitCode === '1') {
+                comment += "- Fix blocking issues identified in review\n";
+              } else if (exitCode === '2') {
+                comment += "- Get GPT-5 review for high-risk changes\n";
+              } else if (exitCode === '3') {
+                comment += "- Fix input validation errors\n";
+              }
+            }
+            
+            if (escalation) {
+              comment += `
+            
+            ### 🚨 Escalation Recommended
+            This PR has been reviewed multiple times and may need human oversight.
+            Consider creating an escalation ticket for senior review.
+            `;
+            }
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
+            
+      - name: Update PR status
+        if: always()
+        run: |
+          if [ "${{ steps.gate.outputs.success }}" = "true" ]; then
+            echo "✅ Review gate PASSED - PR can be merged"
+          else
+            echo "❌ Review gate BLOCKED - PR cannot be merged"
+            echo "Exit code: ${{ steps.gate.outputs.exit_code }}"
+            echo "Reason: ${{ steps.gate.outputs.reason }}"
+            exit 1
+          fi

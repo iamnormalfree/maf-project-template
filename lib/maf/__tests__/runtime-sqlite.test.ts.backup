@@ -1,0 +1,92 @@
+// ABOUTME: Tests for SQLite runtime state implementation
+
+import { createSqliteRuntimeState } from '../runtime-sqlite';
+import type { MafLease, MafHeartbeat } from '../core/runtime-state';
+import type { MafTaskClaim } from '../core/protocols';
+import { rmSync, existsSync } from 'fs';
+
+describe('SQLite Runtime State', () => {
+  const testDbPath = '/tmp/test-maf-runtime.db';
+
+  beforeEach(() => {
+    // Clean up test database
+    if (existsSync(testDbPath)) {
+      rmSync(testDbPath);
+    }
+  });
+
+  afterEach(() => {
+    // Clean up test database
+    if (existsSync(testDbPath)) {
+      rmSync(testDbPath);
+    }
+  });
+
+  it('should initialize with correct schema', () => {
+    const runtimeState = createSqliteRuntimeState(testDbPath);
+    expect(runtimeState).toBeDefined();
+    expect(typeof runtimeState.enqueue).toBe('function');
+    expect(typeof runtimeState.acquireLease).toBe('function');
+    expect(typeof runtimeState.releaseLease).toBe('function');
+    expect(typeof runtimeState.upsertHeartbeat).toBe('function');
+    expect(typeof runtimeState.refresh).toBe('function');
+  });
+
+  it('should handle lease acquisition and release', async () => {
+    const runtimeState = createSqliteRuntimeState(testDbPath);
+    
+    const lease: MafLease = {
+      filePath: '/test/file.ts',
+      agentId: 'test-agent-1',
+      expiresAt: Date.now() + 60000 // 1 minute from now
+    };
+
+    // Should acquire lease successfully
+    await expect(runtimeState.acquireLease(lease)).resolves.not.toThrow();
+
+    // Should fail to acquire same lease
+    await expect(runtimeState.acquireLease(lease)).rejects.toThrow();
+
+    // Should release lease successfully
+    await expect(runtimeState.releaseLease(lease.filePath)).resolves.not.toThrow();
+
+    // Should be able to acquire again after release
+    await expect(runtimeState.acquireLease(lease)).resolves.not.toThrow();
+  });
+
+  it('should handle heartbeat operations', async () => {
+    const runtimeState = createSqliteRuntimeState(testDbPath);
+    
+    const heartbeat: MafHeartbeat = {
+      agentId: 'test-agent-1',
+      lastSeen: Date.now(),
+      status: 'working',
+      contextUsagePercent: 75
+    };
+
+    // Should upsert heartbeat successfully
+    await expect(runtimeState.upsertHeartbeat(heartbeat)).resolves.not.toThrow();
+  });
+
+  it('should handle message enqueueing', async () => {
+    const runtimeState = createSqliteRuntimeState(testDbPath);
+    
+    const message: MafTaskClaim = {
+      type: 'TASK_CLAIM',
+      agentId: 'test-agent-1',
+      beadId: 'test-bead-1',
+      files: ['/test/file.ts'],
+      etaMinutes: 5
+    };
+
+    // Should enqueue message successfully
+    await expect(runtimeState.enqueue(message)).resolves.not.toThrow();
+  });
+
+  it('should handle refresh operations', async () => {
+    const runtimeState = createSqliteRuntimeState(testDbPath);
+    
+    // Should refresh successfully
+    await expect(runtimeState.refresh()).resolves.not.toThrow();
+  });
+});

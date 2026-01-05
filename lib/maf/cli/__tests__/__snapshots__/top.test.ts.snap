@@ -1,0 +1,76 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`maf top CLI JSON schema stability should have stable JSON output for empty database 1`] = `
+{
+  "filters": {
+    "category": undefined,
+    "kind": undefined,
+    "recent": undefined,
+  },
+  "signalFreshness": {
+    "cacheInvalidations": 0,
+    "lastCriticalChange": "[LAST_CRITICAL_CHANGE]",
+    "predictionHorizon": 300000,
+    "realTimeMode": false,
+  },
+  "summary": {
+    "cacheStats": {
+      "cacheAge": "[CACHE_AGE]",
+      "hitRate": "[HIT_RATE]",
+      "invalidationCount": 0,
+      "lastInvalidation": "[LAST_INVALIDATION]",
+      "totalEntries": "[TOTAL_ENTRIES]",
+    },
+    "expiredLeases": 0,
+    "reclaimedLeases": 0,
+    "states": 0,
+    "total": 0,
+  },
+  "tasks": [],
+  "timestamp": "[TIMESTAMP]",
+}
+`;
+
+exports[`maf top CLI JSON schema stability should have stable JSON output schema for snapshot testing 1`] = `
+{
+  "filters": {
+    "category": undefined,
+    "kind": undefined,
+    "recent": undefined,
+  },
+  "signalFreshness": {
+    "cacheInvalidations": 0,
+    "lastCriticalChange": "[LAST_CRITICAL_CHANGE]",
+    "predictionHorizon": 300000,
+    "realTimeMode": false,
+  },
+  "summary": {
+    "cacheStats": {
+      "cacheAge": "[CACHE_AGE]",
+      "hitRate": "[HIT_RATE]",
+      "invalidationCount": 0,
+      "lastInvalidation": "[LAST_INVALIDATION]",
+      "totalEntries": "[TOTAL_ENTRIES]",
+    },
+    "expiredLeases": 0,
+    "reclaimedLeases": 0,
+    "states": 3,
+    "total": 10,
+  },
+  "tasks": [
+    {
+      "count": 5,
+      "state": "completed",
+    },
+    {
+      "count": 3,
+      "state": "pending",
+    },
+    {
+      "count": 2,
+      "state": "running",
+    },
+  ],
+  "timestamp": "[TIMESTAMP]",
+}
+`;

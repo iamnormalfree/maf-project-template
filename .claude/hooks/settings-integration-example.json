@@ -1,0 +1,86 @@
+{
+  "_comment": "Example integration of new metacognitive hooks into settings.json",
+  "_comment2": "Copy desired hook configurations to your actual .claude/settings.json",
+
+  "hooks": {
+    "user-prompt-submit": {
+      "_comment": "Existing hook - add orchestration reminder",
+      "type": "command",
+      "command": "powershell -NoProfile -Command \"$input = $input | ConvertFrom-Json; if ($input.prompt -match '^/response-awareness') { $input.prompt += '`n`nOrchestrate only, do not implement. Follow the response awareness framework exactly step by step.'; } Write-Output ($input | ConvertTo-Json -Compress)\""
+    },
+
+    "before_tool_use": {
+      "_comment_before": "Hooks fire BEFORE tool execution to enforce metacognitive rules",
+
+      "Edit": {
+        "_comment": "Orchestrator firewall - prevents orchestrators from implementing",
+        "type": "command",
+        "command": "python .claude/hooks/orchestrator-firewall.py",
+        "enabled": true
+      },
+
+      "Write": {
+        "_comment": "Orchestrator firewall - prevents orchestrators from implementing",
+        "type": "command",
+        "command": "python .claude/hooks/orchestrator-firewall.py",
+        "enabled": true
+      },
+
+      "NotebookEdit": {
+        "_comment": "Orchestrator firewall - prevents orchestrators from implementing",
+        "type": "command",
+        "command": "python .claude/hooks/orchestrator-firewall.py",
+        "enabled": true
+      },
+
+      "Read": {
+        "_comment": "NEW: Assumption detector - catches unverified assumptions",
+        "type": "command",
+        "command": "python .claude/hooks/assumption-detector.py",
+        "enabled": false,
+        "_activation_note": "Set enabled: true to activate assumption detection"
+      },
+
+      "Grep": {
+        "_comment": "NEW: Assumption detector on Grep (catches assumptions before verification)",
+        "type": "command",
+        "command": "python .claude/hooks/assumption-detector.py",
+        "enabled": false
+      },
+
+      "Task": {
+        "_comment": "NEW: Question suppression detector - enforces Phase 1 clarification",
+        "type": "command",
+        "command": "python .claude/hooks/question-suppression-detector.py",
+        "enabled": false,
+        "_activation_note": "Set enabled: true to enforce question enumeration in Phase 1"
+      }
+    }
+  },
+
+  "_integration_instructions": {
+    "_step1": "Copy the 'before_tool_use' configurations you want",
+    "_step2": "Paste into your actual .claude/settings.json",
+    "_step3": "Set 'enabled': true for hooks you want active",
+    "_step4": "Test with debug mode: DEBUG_ASSUMPTION_DETECTOR=1 or DEBUG_QUESTION_DETECTOR=1"
+  },
+
+  "_recommended_activation_order": {
+    "phase1": "orchestrator-firewall.py (already active)",
+    "phase2": "assumption-detector.py (activate on Read/Edit/Write)",
+    "phase3": "question-suppression-detector.py (activate on Task)",
+    "note": "Start with one new hook at a time to verify behavior"
+  },
+
+  "_hook_behavior_notes": {
+    "orchestrator-firewall": "Blocks Edit/Write/NotebookEdit for orchestrators (already active)",
+    "assumption-detector": "Blocks orchestrators on unverified assumptions, warns agents to tag",
+    "question-suppression": "Blocks Phase 1 orchestrators on ambiguous requirements, warns agents to tag"
+  },
+
+  "_debug_modes": {
+    "orchestrator-firewall": "Set DEBUG_FIREWALL=1",
+    "assumption-detector": "Set DEBUG_ASSUMPTION_DETECTOR=1",
+    "question-suppression": "Set DEBUG_QUESTION_DETECTOR=1"
+  }
+}

@@ -1,0 +1,197 @@
+{
+  "_comment": "TEMPLATE: Full Superpower Workflow Integration",
+  "_description": "Use this template when creating new prompt packs to ensure proper superpower workflow integration",
+  "_workflow": "sp-brainstorming → sp-writing-plans → /plan-to-beads → /response-awareness → review → commit",
+
+  "id": "roundtable-<epic-name>",
+  "title": "<Epic Title>: Brief description",
+  "id_prefixes": ["roundtable-<epic-name>."],
+
+  "base_prefix": "Active plan: roundtable-<epic-name> (<brief description>). Start by checking Agent Mail and any pending /unblock actions.",
+
+  "superpower_workflow": {
+    "_note": "This section documents the complete superpower workflow for this epic",
+    "phase_1_design": {
+      "skill": "sp-brainstorming",
+      "when": "Before any new feature or significant change",
+      "creates": "docs/plans/YYYY-MM-DD-<topic>-design.md",
+      "purpose": "Explore user intent, requirements, constraints, and design alternatives",
+      "output": "Validated design document with architecture, components, data flow, error handling, testing approach"
+    },
+    "phase_2_planning": {
+      "skill": "sp-writing-plans",
+      "when": "After design is validated, before implementation",
+      "creates": "docs/plans/YYYY-MM-DD-<feature-name>.md",
+      "purpose": "Create bite-sized implementation tasks (2-5 min each)",
+      "output": "Implementation plan with frontmatter, file paths, step-by-step tasks, verification commands"
+    },
+    "phase_3_conversion": {
+      "command": "/plan-to-beads",
+      "when": "After implementation plan is created",
+      "creates": "Beads epic with tasks, dependencies, and feature branch",
+      "purpose": "Automatically convert plan to actionable beads",
+      "output": "N beads created with proper labels, dependencies, branch pushed"
+    },
+    "phase_4_implementation": {
+      "workflow": "tmux agents",
+      "steps": [
+        "Supervisor: Assign beads via Agent Mail based on labels",
+        "Implementor-1: Use /response-awareness for frontend/site beads",
+        "Implementor-2: Use /response-awareness for backend/api beads",
+        "Each bead: File reservations, implementation, tests, receipt"
+      ],
+      "skills": [
+        "response-awareness - Metacognitive orchestration for each bead",
+        "sp-test-driven-development - Test-first implementation",
+        "sp-systematic-debugging - If issues arise",
+        "sp-verification-before-completion - Final validation before closing bead"
+      ]
+    },
+    "phase_5_review": {
+      "role": "Reviewer (BlackDog)",
+      "actions": [
+        "Review implementation changes",
+        "Run target tests",
+        "Verify receipt completeness",
+        "Approve or reopen with concrete diffs"
+      ],
+      "skills": [
+        "sp-requesting-code-review - Before marking complete",
+        "sp-verification-before-completion - Quality gate"
+      ]
+    },
+    "phase_6_completion": {
+      "role": "Supervisor (GreenMountain)",
+      "actions": [
+        "Verify all epic beads complete",
+        "Ensure reviewer approval on all beads",
+        "Run ./scripts/maf/agent-commit.sh",
+        "Merge feature branch to main"
+      ],
+      "skills": [
+        "sp-finishing-a-development-branch - For final completion"
+      ]
+    }
+  },
+
+  "supervisor": {
+    "role": "Coordinator (GreenMountain - pane 0)",
+    "responsibilities": [
+      "Check Agent Mail for new plans and coordination messages",
+      "Use /plan-to-beads to convert new implementation plans to beads",
+      "Assign beads to implementors based on labels and domain expertise",
+      "Monitor progress via bd list and Agent Mail",
+      "Clear blockers and coordinate team",
+      "Close beads only after reviewer sign-off",
+      "Commit epic work when all beads complete"
+    ],
+    "superpower_commands": {
+      "new_feature": "Use sp-brainstorming → sp-writing-plans → /plan-to-beads workflow",
+      "existing_plan": "Use /plan-to-beads docs/plans/<plan>.md to convert",
+      "assigning_work": "Use Agent Mail to assign with context and branch info",
+      "monitoring": "Use bd ready --label <epic> to see epic status",
+      "completion": "Use ./scripts/maf/agent-commit.sh when epic complete"
+    },
+    "extra": "Keep everyone on the epic (roundtable-<epic-name>.*). Prefer /broadcast-targeted (draft). **NEW FEATURES**: Use sp-brainstorming before sp-writing-plans for design exploration. **CONVERSION**: Use /plan-to-beads docs/plans/<plan>.md to automatically convert plans to beads before assigning. Close beads only after reviewer sign-off. For complex epic-level decisions, use ultrathink."
+  },
+
+  "reviewer": {
+    "role": "Quality Assurance (BlackDog - pane 1)",
+    "responsibilities": [
+      "Check Agent Mail for review requests",
+      "Review implementation changes with git diff",
+      "Run target tests to verify correctness",
+      "Validate receipt completeness (files, tests, changes)",
+      "Approve or reopen with concrete diffs",
+      "Use sp-verification-before-completion for complex changes"
+    ],
+    "superpower_commands": {
+      "reviewing": "Use sp-verification-before-completion for thorough validation",
+      "complex": "Use ultrathink for complex analysis or security reviews",
+      "approval": "Send '[bead-id] Approved' message via Agent Mail",
+      "feedback": "Reopen with bd reopen <id> --reason 'specific feedback'"
+    },
+    "extra": "Verify with the bead's target test commands and re-open with concrete diffs if needed. **RECEIPT VERIFICATION REQUIRED**: Before approving, check that implementor provided a receipt (summary of changes, files modified, tests run). Verify receipt matches actual changes with git status and git diff. No receipt = re-open with feedback. **GUARDRAILS ACTIVE**: Filesystem guardrails block git commit/push/merge/rebase - use bd close to approve, bd reopen for feedback. Reviewer role is QA-only, not implementation. See docs/agents.md 'Reviewer Guardrails' section. For complex analysis, use ultrathink. **SKILLS**: Use sp-verification-before-completion for thorough quality gates."
+  },
+
+  "implementor_1": {
+    "role": "Frontend/Site Implementor (OrangePond - pane 2)",
+    "domains": ["frontend", "site", "ux", "docs"],
+    "label_preferences": ["site", "frontend", "ux", "docs", "<epic-label>"],
+    "reserve_paths_hint": "apps/site/** and docs/** (only what you touch)",
+    "test_commands": ["pnpm --filter @roundtable/site test", "pnpm --filter @roundtable/site build"],
+    "responsibilities": [
+      "Check Agent Mail for bead assignments",
+      "Use /response-awareness for ALL bead implementation",
+      "Reserve files before editing with file_reservation_paths",
+      "Work TDD-first with sp-test-driven-development",
+      "Generate receipt with ./scripts/maf/receipt.sh <id>",
+      "Notify reviewer when ready for review"
+    ],
+    "superpower_workflow": {
+      "bead_start": "CRITICAL: Use /response-awareness 'Implement bead [id]: [title]'",
+      "testing": "Use sp-test-driven-development for test-first approach",
+      "debugging": "Use sp-systematic-debugging if issues arise",
+      "completion": "Use sp-verification-before-completion before closing",
+      "receipt": "Generate receipt: ./scripts/maf/receipt.sh <bead-id>"
+    },
+    "extra": "CRITICAL: When implementing beads, ALWAYS start with /response-awareness 'Implement bead [id]: [title]' - this enables metacognitive orchestration and proper skill selection. **SUPERPOWER WORKFLOW**: 1) /response-awareness for implementation, 2) sp-test-driven-development for test-first approach, 3) sp-systematic-debugging if blocked, 4) sp-verification-before-completion before closing. **WRITING GOOD ACCEPTANCE CRITERIA**: When creating or updating beads, write verifiable AC. Use 'Script: <command> passes' instead of 'file exists'. Include exact file paths and actual test commands. See docs/operations/writing-good-ac.md for templates and examples. **RECEIPT REQUIRED**: When closing bead, provide a receipt summarizing: files modified, tests run with results, changes summary, and any deviations from plan. Send receipt via Agent Mail or include in bd close message. No receipt = reviewer will re-open."
+  },
+
+  "implementor_2": {
+    "role": "Backend/API Implementor (FuchsiaCreek - pane 3)",
+    "domains": ["backend", "api", "database", "auth", "email"],
+    "label_preferences": ["backend", "api", "db", "auth", "shared", "<epic-label>"],
+    "reserve_paths_hint": "apps/backend/** and packages/shared/** (only what you touch)",
+    "test_commands": ["pnpm --filter backend test", "pnpm --filter @roundtable/shared test"],
+    "responsibilities": [
+      "Check Agent Mail for bead assignments",
+      "Use /response-awareness for ALL bead implementation",
+      "Follow service layer architecture (see docs/maf/backend-patterns.md)",
+      "Reserve files before editing with file_reservation_paths",
+      "Work TDD-first with sp-test-driven-development",
+      "Generate receipt with ./scripts/maf/receipt.sh <id>",
+      "Notify reviewer when ready for review"
+    ],
+    "superpower_workflow": {
+      "bead_start": "CRITICAL: Use /response-awareness 'Implement bead [id]: [title]'",
+      "architecture": "Follow service layer: Routes → Services → Repositories",
+      "testing": "Use sp-test-driven-development for test-first approach",
+      "debugging": "Use sp-systematic-debugging if issues arise",
+      "completion": "Use sp-verification-before-completion before closing",
+      "receipt": "Generate receipt: ./scripts/maf/receipt.sh <bead-id>"
+    },
+    "extra": "CRITICAL: When implementing beads, ALWAYS start with /response-awareness 'Implement bead [id]: [title]' - this enables metacognitive orchestration and proper skill selection. **BACKEND PATTERN**: Follow service layer architecture: Routes (HTTP) → Services (Business Logic) → Repositories (Data Access). NEVER write raw SQL in routes. See docs/maf/backend-patterns.md for complete guide. **SUPERPOWER WORKFLOW**: 1) /response-awareness for implementation, 2) sp-test-driven-development for test-first approach, 3) sp-systematic-debugging if blocked, 4) sp-verification-before-completion before closing. **WRITING GOOD ACCEPTANCE CRITERIA**: When creating or updating beads, write verifiable AC. Use 'Script: <command> passes' instead of 'file exists'. Include exact file paths and actual test commands. See docs/operations/writing-good-ac.md for templates and examples. **RECEIPT REQUIRED**: When closing bead, provide a receipt summarizing: files modified, tests run with results, changes summary, and any deviations from plan. Send receipt via Agent Mail or include in bd close message. No receipt = reviewer will re-open."
+  },
+
+  "guardrails": [
+    "Do not run git commit/push/merge/rebase (use bd close for approval)",
+    "Reserve only the paths you will touch before editing (reason=<bead-id>)",
+    "TDD-first: write the failing test before implementation changes",
+    "Keep changes DRY/YAGNI; small diffs; green tests before closing the bead",
+    "RECEIPT ENFORCEMENT: No receipt = no close. Implementors must provide receipt, reviewers must verify.",
+    "REVIEWER GUARDRAILS: Reviewer cannot git commit/push/merge/rebase - QA-only role, see docs/agents.md",
+    "SUPERPOWER WORKFLOW: Always use /response-awareness for bead implementation, not direct coding",
+    "FILE RESERVATIONS: Always use file_reservation_paths before editing files",
+    "SERVICE LAYER: Backend code must follow Routes → Services → Repositories pattern"
+  ],
+
+  "skills_reference": {
+    "workflow": "Complete superpower workflow for reference",
+    "sp-brainstorming": "Initial design exploration - REQUIRED for new features",
+    "sp-writing-plans": "Implementation plan creation - REQUIRED before /plan-to-beads",
+    "plan-to-beads": "Convert plans to beads automatically",
+    "response-awareness": "Metacognitive orchestration for bead implementation",
+    "sp-test-driven-development": "Test-first implementation approach",
+    "sp-systematic-debugging": "Systematic troubleshooting when issues arise",
+    "sp-verification-before-completion": "Quality validation before closing beads",
+    "sp-finishing-a-development-branch": "Complete and merge epic work",
+    "sp-requesting-code-review": "Get thorough review before marking complete"
+  },
+
+  "examples": {
+    "new_feature_workflow": "1) Use sp-brainstorming for design → 2) Use sp-writing-plans for implementation plan → 3) Use /plan-to-beads to create beads → 4) Assign via Agent Mail → 5) Implementors use /response-awareness",
+    "existing_plan_workflow": "1) Use /plan-to-beads docs/plans/<plan>.md → 2) Assign beads via Agent Mail → 3) Implementors use /response-awareness",
+    "bead_implementation": "Implementor: /response-awareness 'Implement bead roundtable-abc123: Add user authentication' → Framework handles 6-phase workflow → Generate receipt → Notify reviewer"
+  }
+}

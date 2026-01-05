@@ -1,0 +1,16 @@
+{
+  "name": "roundtable-maf-telegram-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot for Roundtable MAF script execution and monitoring",
+  "main": "telegram-bot.js",
+  "scripts": {
+    "start": "node telegram-bot.js",
+    "dev": "NODE_ENV=development node telegram-bot.js"
+  },
+  "dependencies": {
+    "node-telegram-bot-api": "^0.64.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

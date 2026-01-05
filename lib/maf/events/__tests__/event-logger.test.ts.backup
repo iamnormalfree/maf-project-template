@@ -1,0 +1,273 @@
+// ABOUTME: Tests for the SQLite-first event logging system.
+// ABOUTME: Validates typed event emission, chronological retrieval, and database integration.
+
+import { rmSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { createMafEventLogger, MafEventLogger } from '../event-logger';
+import { TaskState } from '../../core/state';
+
+describe('MafEventLogger', () => {
+  let mockDb: any;
+  let eventLogger: MafEventLogger;
+  let mockInsertEvent: jest.MockedFunction<any>;
+  let mockGetEvents: jest.MockedFunction<any>;
+
+  // Set up the mock for the 'require' call
+  const originalRequire = require;
+  const mockBetterSqlite3 = jest.fn();
+
+  beforeAll(() => {
+    require = jest.fn((moduleName: string) => {
+      if (moduleName === 'better-sqlite3') {
+        return mockBetterSqlite3;
+      }
+      return originalRequire(moduleName);
+    }) as any;
+  });
+
+  afterAll(() => {
+    require = originalRequire;
+  });
+
+  beforeEach(() => {
+    // Create mock database
+    mockInsertEvent = jest.fn();
+    mockGetEvents = jest.fn();
+    
+    mockDb = {
+      prepare: jest.fn().mockImplementation((query: string) => {
+        if (query.includes('INSERT INTO events')) {
+          return { run: mockInsertEvent };
+        }
+        if (query.includes('SELECT * FROM events')) {
+          return { all: mockGetEvents };
+        }
+        return {};
+      }),
+      close: jest.fn()
+    };
+
+    // Mock the events array to simulate database storage
+    let events: any[] = [];
+    
+    mockInsertEvent.mockImplementation((taskId: string, ts: number, kind: string, dataJson: string) => {
+      const id = events.length + 1;
+      events.push({
+        id,
+        task_id: taskId,
+        ts,
+        kind,
+        data_json: dataJson
+      });
+      return { lastInsertRowid: id, changes: 1 };
+    });
+
+    mockGetEvents.mockImplementation((taskId: string) => {
+      return events
+        .filter(event => event.task_id === taskId)
+        .sort((a, b) => a.ts - b.ts);
+    });
+
+    eventLogger = createMafEventLogger(mockDb as any);
+    events = []; // Reset events for each test
+  });
+
+  describe('logTaskClaimed', () => {
+    it('should log a CLAIMED event when a task is claimed by an agent', () => {
+      const taskId = 'test-task-1';
+      const agentId = 'agent-123';
+      const attempt = 1;
+
+      eventLogger.logTaskClaimed(taskId, agentId, attempt);
+
+      expect(mockInsertEvent).toHaveBeenCalledWith(
+        taskId,
+        expect.any(Number),
+        'CLAIMED',
+        JSON.stringify({ agent_id: agentId, attempt })
+      );
+    });
+
+    it('should increment timestamp for multiple events', () => {
+      const taskId = 'test-task-2';
+      
+      eventLogger.logTaskClaimed(taskId, 'agent-1', 1);
+      const firstTimestamp = mockInsertEvent.mock.calls[0][1];
+      
+      // Small delay to ensure different timestamps
+      setTimeout(() => {
+        eventLogger.logTaskClaimed(taskId, 'agent-2', 2);
+        const secondTimestamp = mockInsertEvent.mock.calls[1][1];
+        
+        expect(secondTimestamp).toBeGreaterThan(firstTimestamp);
+      }, 1);
+    });
+  });
+
+  describe('logTaskRunning', () => {
+    it('should log a RUNNING event when a task starts execution', () => {
+      const taskId = 'test-task-3';
+
+      eventLogger.logTaskRunning(taskId);
+
+      expect(mockInsertEvent).toHaveBeenCalledWith(
+        taskId,
+        expect.any(Number),
+        'RUNNING',
+        '{}'
+      );
+    });
+  });
+
+  describe('logTaskVerifying', () => {
+    it('should log a VERIFYING event when a task enters verification phase', () => {
+      const taskId = 'test-task-4';
+
+      eventLogger.logTaskVerifying(taskId);
+
+      expect(mockInsertEvent).toHaveBeenCalledWith(
+        taskId,
+        expect.any(Number),
+        'VERIFYING',
+        '{}'
+      );
+    });
+  });
+
+  describe('logTaskCommitted', () => {
+    it('should log a COMMITTED event when a task completes successfully', () => {
+      const taskId = 'test-task-5';
+
+      eventLogger.logTaskCommitted(taskId);
+
+      expect(mockInsertEvent).toHaveBeenCalledWith(
+        taskId,
+        expect.any(Number),
+        'COMMITTED',
+        '{}'
+      );
+    });
+  });
+
+  describe('logTaskError', () => {
+    it('should log an ERROR event when a task fails', () => {
+      const taskId = 'test-task-6';
+      const error = new Error('Test error message');
+      const context = { step: 'verification', retryable: true };
+
+      eventLogger.logTaskError(taskId, error, context);
+
+      const expectedData = {
+        error: {
+          message: error.message,
+          name: error.name,
+          stack: error.stack
+        },
+        context
+      };
+
+      expect(mockInsertEvent).toHaveBeenCalledWith(
+        taskId,
+        expect.any(Number),
+        'ERROR',
+        JSON.stringify(expectedData)
+      );
+    });
+
+    it('should handle errors without context', () => {
+      const taskId = 'test-task-7';
+      const error = new Error('Simple error');
+
+      eventLogger.logTaskError(taskId, error);
+
+      const expectedData = {
+        error: {
+          message: error.message,
+          name: error.name,
+          stack: error.stack
+        }
+      };
+
+      expect(mockInsertEvent).toHaveBeenCalledWith(
+        taskId,
+        expect.any(Number),
+        'ERROR',
+        JSON.stringify(expectedData)
+      );
+    });
+  });
+
+  describe('getTaskEvents', () => {
+    it('should retrieve all events for a task in chronological order', () => {
+      const taskId = 'test-task-8';
+      const agentId = 'agent-456';
+
+      // Set up the mock to return events in chronological order
+      const mockEvents = [
+        { id: 1, task_id: taskId, ts: 1000, kind: 'CLAIMED', data_json: '{"agent_id":"agent-456","attempt":1}' },
+        { id: 2, task_id: taskId, ts: 2000, kind: 'RUNNING', data_json: '{}' },
+        { id: 3, task_id: taskId, ts: 3000, kind: 'VERIFYING', data_json: '{}' },
+        { id: 4, task_id: taskId, ts: 4000, kind: 'COMMITTED', data_json: '{}' }
+      ];
+      mockGetEvents.mockReturnValue(mockEvents);
+
+      // Log multiple events
+      eventLogger.logTaskClaimed(taskId, agentId, 1);
+      eventLogger.logTaskRunning(taskId);
+      eventLogger.logTaskVerifying(taskId);
+      eventLogger.logTaskCommitted(taskId);
+
+      const events = eventLogger.getTaskEvents(taskId);
+      expect(events).toHaveLength(4);
+      
+      expect(events[0].kind).toBe('CLAIMED');
+      expect(events[1].kind).toBe('RUNNING');
+      expect(events[2].kind).toBe('VERIFYING');
+      expect(events[3].kind).toBe('COMMITTED');
+      
+      // Verify chronological order
+      expect(events[0].ts).toBeLessThan(events[1].ts);
+      expect(events[1].ts).toBeLessThan(events[2].ts);
+      expect(events[2].ts).toBeLessThan(events[3].ts);
+    });
+
+    it('should return empty array for task with no events', () => {
+      mockGetEvents.mockReturnValue([]);
+      const events = eventLogger.getTaskEvents('non-existent-task');
+      expect(events).toHaveLength(0);
+    });
+  });
+
+  describe('integration with TaskState transitions', () => {
+    it('should support all required event types for the task lifecycle', () => {
+      const taskId = 'integration-task';
+      const agentId = 'integration-agent';
+
+      // Simulate complete task lifecycle
+      eventLogger.logTaskClaimed(taskId, agentId, 1);
+      eventLogger.logTaskRunning(taskId);
+      eventLogger.logTaskVerifying(taskId);
+      eventLogger.logTaskCommitted(taskId);
+
+      const calls = mockInsertEvent.mock.calls;
+      const eventKinds = calls.map(call => call[2]); // kind is the 3rd parameter
+      
+      expect(eventKinds).toEqual(['CLAIMED', 'RUNNING', 'VERIFYING', 'COMMITTED']);
+    });
+
+    it('should handle error scenarios in task lifecycle', () => {
+      const taskId = 'error-task';
+      const agentId = 'error-agent';
+
+      // Simulate task that fails
+      eventLogger.logTaskClaimed(taskId, agentId, 1);
+      eventLogger.logTaskRunning(taskId);
+      eventLogger.logTaskError(taskId, new Error('Task failed'), { step: 'execution' });
+
+      const calls = mockInsertEvent.mock.calls;
+      const eventKinds = calls.map(call => call[2]); // kind is the 3rd parameter
+      
+      expect(eventKinds).toEqual(['CLAIMED', 'RUNNING', 'ERROR']);
+    });
+  });
+});

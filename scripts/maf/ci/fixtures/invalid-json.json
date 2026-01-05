@@ -1,0 +1,9 @@
+{
+  "taskId": "CAN-065-invalid",
+  "tier": "MEDIUM"
+  "risk": "LOW",
+  "codex": {
+    "issues": 1,
+    "blocking": 0
+  }
+  // Missing closing brace - invalid JSON

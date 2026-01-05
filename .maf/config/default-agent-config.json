@@ -1,0 +1,365 @@
+{
+  "version": "2.0.0",
+  "metadata": {
+    "created": "2025-11-12T00:00:00Z",
+    "description": "Multi-Agent Framework configuration with GLM and Minimax support",
+    "nextnest_version": "1.0.0"
+  },
+  "agent_types": {
+    "claude-worker": {
+      "description": "Claude Code CLI worker agent",
+      "capabilities": ["implementation", "testing", "documentation"],
+      "default_model": "claude-sonnet-4",
+      "environment": {
+        "NODE_ENV": "production"
+      }
+    },
+    "claude-committer": {
+      "description": "Claude Code CLI committer agent",
+      "capabilities": ["git-workflow", "integration", "quality-assurance"],
+      "default_model": "claude-sonnet-4",
+      "environment": {
+        "NODE_ENV": "production"
+      }
+    },
+    "codex-reviewer": {
+      "description": "Codex API reviewer agent",
+      "capabilities": ["code-review", "audit", "planning"],
+      "default_model": "gpt-4",
+      "environment": {
+        "OPENAI_MODEL": "gpt-4"
+      }
+    },
+    "coordinator": {
+      "description": "Session coordinator agent",
+      "capabilities": ["monitoring", "coordination", "escalation"],
+      "default_model": "claude-sonnet-4",
+      "environment": {
+        "NODE_ENV": "production"
+      }
+    },
+    "codex-planner": {
+      "description": "Codex planning specialist",
+      "capabilities": ["task-planning", "ra-synthesis", "architecture"],
+      "default_model": "gpt-4",
+      "environment": {
+        "OPENAI_MODEL": "gpt-4"
+      }
+    },
+    "glm-worker": {
+      "description": "GLM-4.6 implementation specialist",
+      "capabilities": ["implementation", "feature-development", "bug-fixes"],
+      "default_model": "glm-4.6",
+      "environment": {
+        "GLM_MODEL": "glm-4.6"
+      }
+    },
+    "minimax-debug": {
+      "description": "Minimax debug and rescue specialist",
+      "capabilities": ["debugging", "refactoring", "loop-breakout"],
+      "default_model": "minimax-m2",
+      "environment": {
+        "MINIMAX_MODEL": "minimax-m2"
+      }
+    }
+  },
+  "session_layouts": {
+    "glm_review_3_pane": {
+      "description": "GLM worker paired with Codex reviewer and Claude committer",
+      "panes": [
+        {
+          "position": "left",
+          "size": "50%",
+          "agent_type": "glm-worker",
+          "name": "glm-worker",
+          "windows": [
+            {
+              "name": "main",
+              "command": "npm run maf:claim-task",
+              "startup": true
+            }
+          ]
+        },
+        {
+          "position": "top-right",
+          "size": "25%",
+          "agent_type": "codex-reviewer",
+          "name": "reviewer",
+          "windows": [
+            {
+              "name": "main",
+              "command": "npm run maf:claim-task",
+              "startup": true
+            }
+          ]
+        },
+        {
+          "position": "bottom-right",
+          "size": "25%",
+          "agent_type": "claude-committer",
+          "name": "claude-committer",
+          "windows": [
+            {
+              "name": "main",
+              "command": "git status",
+              "startup": true
+            }
+          ]
+        }
+      ],
+      "tmux_options": {
+        "remain-on-exit": true,
+        "mouse": true
+      }
+    },
+    "default_4_pane": {
+      "description": "Standard 4-pane layout for MAF development",
+      "panes": [
+        {
+          "position": "top-left",
+          "size": "25%",
+          "agent_type": "coordinator",
+          "name": "coordinator",
+          "windows": [
+            {
+              "name": "main",
+              "command": "npm run maf:status",
+              "startup": true
+            }
+          ]
+        },
+        {
+          "position": "top-right",
+          "size": "25%",
+          "agent_type": "claude-worker",
+          "name": "worker-1",
+          "windows": [
+            {
+              "name": "main",
+              "command": "npm run maf:claim-task",
+              "startup": true
+            }
+          ]
+        },
+        {
+          "position": "bottom-left",
+          "size": "25%",
+          "agent_type": "claude-worker",
+          "name": "worker-2",
+          "windows": [
+            {
+              "name": "main",
+              "command": "npm run maf:claim-task",
+              "startup": true
+            }
+          ]
+        },
+        {
+          "position": "bottom-right",
+          "size": "25%",
+          "agent_type": "codex-reviewer",
+          "name": "reviewer",
+          "windows": [
+            {
+              "name": "main",
+              "command": "npm run lint",
+              "startup": true
+            }
+          ]
+        }
+      ],
+      "tmux_options": {
+        "remain-on-exit": true,
+        "mouse": true
+      }
+    },
+    "cli_codex_claude_4_pane": {
+      "description": "Two Claude CLI workers (GLM), Codex reviewer, Codex supervisor",
+      "panes": [
+        {
+          "position": "top-left",
+          "size": "25%",
+          "agent_type": "coordinator",
+          "name": "coordinator",
+          "windows": [
+            {
+              "name": "main",
+              "command": "codex --full-auto",
+              "startup": true
+            }
+          ]
+        },
+        {
+          "position": "top-right",
+          "size": "25%",
+          "agent_type": "claude-worker",
+          "name": "worker-1",
+          "windows": [
+            {
+              "name": "main",
+              "command": "claude",
+              "startup": true
+            }
+          ]
+        },
+        {
+          "position": "bottom-left",
+          "size": "25%",
+          "agent_type": "claude-worker",
+          "name": "worker-2",
+          "windows": [
+            {
+              "name": "main",
+              "command": "claude",
+              "startup": true
+            }
+          ]
+        },
+        {
+          "position": "bottom-right",
+          "size": "25%",
+          "agent_type": "codex-reviewer",
+          "name": "reviewer",
+          "windows": [
+            {
+              "name": "main",
+              "command": "codex --full-auto",
+              "startup": true
+            }
+          ]
+        }
+      ],
+      "tmux_options": {
+        "remain-on-exit": true,
+        "mouse": true
+      }
+    },
+    "minimal_2_pane": {
+      "description": "Minimal 2-pane layout for focused work",
+      "panes": [
+        {
+          "position": "left",
+          "size": "50%",
+          "agent_type": "claude-worker",
+          "name": "worker",
+          "windows": [
+            {
+              "name": "main",
+              "command": "npm run maf:claim-task",
+              "startup": true
+            }
+          ]
+        },
+        {
+          "position": "right",
+          "size": "50%",
+          "agent_type": "claude-committer",
+          "name": "committer",
+          "windows": [
+            {
+              "name": "main",
+              "command": "git status",
+              "startup": true
+            }
+          ]
+        }
+      ],
+      "tmux_options": {
+        "remain-on-exit": true,
+        "mouse": true
+      }
+    }
+  },
+  "integration_settings": {
+    "npm_scripts": {
+      "maf:claim-task": "npm run maf:claim-task",
+      "maf:status": "npm run maf:status",
+      "maf:spawn-agents": "npm run maf:spawn-agents",
+      "maf:setup": "npm run maf:setup"
+    },
+    "agent_mail": {
+      "enabled": true,
+      "mailbox_path": ".agent-mail/messages",
+      "mcp_server_path": "mcp_agent_mail",
+      "polling_interval": 30,
+      "auto_claim_tasks": true
+    },
+    "beads_workflow": {
+      "enabled": true,
+      "ready_command": "npm run maf:beads-ready",
+      "assign_command": "npm run maf:beads-assign",
+      "close_command": "npm run maf:beads-close",
+      "constraint_filtering": true,
+      "auto_assignment": true,
+      "evidence_collection": true
+    },
+    "git_workflow": {
+      "auto_branch_creation": true,
+      "branch_prefix": "feature/",
+      "commit_template": "feat: implement {task_id}\n\n{description}\n\n🤖 Generated with Claude Code\n\nCo-Authored-By: Claude <noreply@anthropic.com>",
+      "pre_commit_hooks": ["npm run lint", "npm run test"],
+      "auto_merge_enabled": false,
+      "merge_strategy": "squash"
+    }
+  },
+  "monitoring": {
+    "health_checks": {
+      "enabled": true,
+      "interval": 60,
+      "timeout": 30,
+      "retry_count": 3,
+      "checks": ["process", "memory", "disk", "network"]
+    },
+    "resource_monitoring": {
+      "enabled": true,
+      "interval": 30,
+      "metrics": ["cpu", "memory", "disk", "network"],
+      "thresholds": {
+        "cpu_warning": 80,
+        "cpu_critical": 95,
+        "memory_warning": 85,
+        "memory_critical": 95
+      }
+    }
+  },
+  "performance": {
+    "startup": {
+      "parallel_initialization": true,
+      "max_concurrent_agents": 4,
+      "health_check_timeout": 30,
+      "fallback_timeout": 60
+    },
+    "scaling": {
+      "auto_scale": false,
+      "min_workers": 2,
+      "max_workers": 8,
+      "scale_up_threshold": 5,
+      "scale_down_threshold": 1,
+      "idle_timeout": 300
+    }
+  },
+  "security": {
+    "agent_isolation": {
+      "enabled": false,
+      "sandbox_mode": "permissive"
+    },
+    "audit": {
+      "enabled": true,
+      "log_all_commands": false,
+      "log_file_access": true,
+      "retention_days": 30
+    }
+  },
+  "session_defaults": {
+    "remain_on_exit": true,
+    "mouse": true
+  },
+  "defaults": {
+    "agent_type": "claude-worker",
+    "session_layout": "glm_review_3_pane",
+    "log_level": "info",
+    "timeout": 300,
+    "retry_count": 3,
+    "auto_cleanup": true
+  }
+}

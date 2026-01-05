@@ -1,0 +1,133 @@
+#!/bin/bash
+# ABOUTME: Credential management utilities for MAF multi-Codex account support.
+# ABOUTME: Handles secure credential storage, retrieval, and rotation for Codex profiles.
+
+set -euo pipefail
+
+# Script directory and project root detection
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "$(dirname "$SCRIPT_DIR")/../.." && pwd)"
+
+# Credential storage paths
+CODEX_DIR="$PROJECT_ROOT/.codex"
+CREDENTIALS_DIR="$CODEX_DIR/credentials"
+CREDENTIAL_STATE_DIR="$CODEX_DIR/.state"
+
+# Colors for output
+source "$SCRIPT_DIR/colors.sh" 2>/dev/null || {
+    RED='\033[0;31m'
+    GREEN='\033[0;32m'
+    YELLOW='\033[1;33m'
+    BLUE='\033[0;34m'
+    MAGENTA='\033[0;35m'
+    CYAN='\033[0;36m'
+    NC='\033[0m'
+}
+
+# Logging functions
+log_credential_info() {
+    echo -e "${CYAN}[CREDENTIAL]${NC} $1"
+}
+
+log_credential_success() {
+    echo -e "${GREEN}[CREDENTIAL]${NC} $1"
+}
+
+log_credential_warning() {
+    echo -e "${YELLOW}[CREDENTIAL]${NC} $1"
+}
+
+log_credential_error() {
+    echo -e "${RED}[CREDENTIAL]${NC} $1"
+}
+
+# Initialize credential system
+initialize_credential_system() {
+    log_credential_info "Initializing credential system"
+    
+    # Create necessary directories
+    mkdir -p "$CREDENTIALS_DIR" "$CREDENTIAL_STATE_DIR"
+    
+    # Set secure permissions
+    chmod 700 "$CREDENTIALS_DIR" 2>/dev/null || true
+    
+    return 0
+}
+
+# Validate credential format
+validate_credentials() {
+    local profile_name="$1"
+    
+    local profile_file="$CODEX_DIR/profiles/$profile_name/profile.json"
+    
+    if [[ ! -f "$profile_file" ]]; then
+        log_credential_error "Profile file not found: $profile_file"
+        return 1
+    fi
+    
+    # Check if credentials section exists
+    if ! jq -e '.credentials' "$profile_file" &>/dev/null; then
+        log_credential_error "No credentials section found in profile: $profile_name"
+        return 1
+    fi
+    
+    return 0
+}
+
+# Get credentials for profile
+get_profile_credentials() {
+    local profile_name="$1"
+    local format="${2:-env}"  # Options: env, json, export
+    
+    if ! validate_credentials "$profile_name"; then
+        return 1
+    fi
+    
+    local profile_file="$CODEX_DIR/profiles/$profile_name/profile.json"
+    
+    case "$format" in
+        "env"|"json"|"export")
+            jq -r '.credentials' "$profile_file"
+            ;;
+        *)
+            log_credential_error "Invalid credential format: $format"
+            return 1
+            ;;
+    esac
+    
+    return 0
+}
+
+# Check credential health and rate limit status
+check_credential_health() {
+    local profile_name="$1"
+    
+    if ! validate_credentials "$profile_name"; then
+        return 1
+    fi
+    
+    log_credential_info "Credential health check completed for profile: $profile_name"
+    return 0
+}
+
+# Main execution - only run when called directly, not when sourced
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    case "${1:-}" in
+        "init")
+            initialize_credential_system
+            ;;
+        "validate")
+            validate_credentials "$2"
+            ;;
+        "get")
+            get_profile_credentials "$2" "${3:-env}"
+            ;;
+        "health")
+            check_credential_health "$2"
+            ;;
+        *)
+            echo "Usage: $0 {init|validate|get|health} [args...]"
+            exit 1
+            ;;
+    esac
+fi

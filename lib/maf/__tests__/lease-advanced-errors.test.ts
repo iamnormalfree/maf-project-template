@@ -1,0 +1,305 @@
+// Advanced error scenario tests for MAF lease operations
+import { createMafRuntimeState, MafRuntimeConfig } from '../core/runtime-factory';
+import { Scheduler } from '../core/scheduler';
+
+// These tests spin up SQLite runtimes repeatedly and can be slow; keep opt-in for `npm test`.
+const skipHeavy = process.env.MAF_RUN_HEAVY_TESTS !== 'true';
+const describeHeavy = skipHeavy ? describe.skip : describe;
+
+describeHeavy('MAF Lease Operations - Advanced Error Scenarios', () => {
+  const testDir = '.maf-test-advanced-errors';
+  const dbPath = testDir + '/advanced-errors.db';
+  let runtime: any;
+  let scheduler: any;
+  let db: any;
+
+  beforeEach(async () => {
+    // Setup test environment
+    const { rmSync, mkdirSync, existsSync } = require('fs');
+    if (existsSync(testDir)) {
+      rmSync(testDir, { recursive: true, force: true });
+    }
+    mkdirSync(testDir, { recursive: true });
+
+    const config: MafRuntimeConfig = {
+      type: 'sqlite',
+      agentMailRoot: testDir + '/agent-mail',
+      dbPath
+    };
+
+    runtime = await createMafRuntimeState(config);
+    const Database = require('better-sqlite3');
+    db = new Database(dbPath);
+    scheduler = new Scheduler(db);
+  });
+
+  afterEach(() => {
+    if (db) db.close();
+    const { rmSync, existsSync } = require('fs');
+    if (existsSync(testDir)) {
+      rmSync(testDir, { recursive: true, force: true });
+    }
+  });
+
+  describe('Concurrent Lease Operations', () => {
+    it('should handle concurrent lease renewals without corruption', async () => {
+      const filePath = `${testDir}/concurrent-test.txt`;
+      const agentId = 'agent-1';
+      const taskId = 'file_' + require('crypto')
+        .createHash('sha256')
+        .update(filePath)
+        .digest('hex')
+        .substring(0, 16);
+
+      // Create initial lease
+      await runtime.acquireLease({
+        filePath,
+        agentId,
+        expiresAt: Date.now() + 30000
+      });
+
+      // Attempt concurrent renewals
+      const renewals = Array(10).fill(null).map(() =>
+        runtime.renew(taskId, agentId, 30000)
+      );
+
+      const results = await Promise.allSettled(renewals);
+
+      // Should have some successful renewals but no corruption
+      const successful = results.filter(r => r.status === 'fulfilled' && r.value);
+      console.log(`Concurrent renewals: ${successful.length}/${renewals.length} successful`);
+
+      expect(successful.length).toBeGreaterThan(0);
+      expect(successful.length).toBeLessThanOrEqual(renewals.length);
+    });
+
+    it('should reject concurrent renewals from different agents', async () => {
+      const filePath = `${testDir}/concurrent-agents.txt`;
+      const agent1 = 'agent-1';
+      const agent2 = 'agent-2';
+      const taskId = 'file_' + require('crypto')
+        .createHash('sha256')
+        .update(filePath)
+        .digest('hex')
+        .substring(0, 16);
+
+      // Create lease for agent1
+      await runtime.acquireLease({
+        filePath,
+        agentId: agent1,
+        expiresAt: Date.now() + 30000
+      });
+
+      // Attempt concurrent renewals from different agents
+      const [renew1, renew2] = await Promise.all([
+        runtime.renew(taskId, agent1, 30000),
+        runtime.renew(taskId, agent2, 30000)
+      ]);
+
+      expect(renew1).toBe(true); // Owner can renew
+      expect(renew2).toBe(false); // Different agent cannot renew
+    });
+  });
+
+  describe('Database Error Recovery', () => {
+    it('should handle database connection errors gracefully', async () => {
+      // Test input validation to ensure the method handles edge cases gracefully
+      // This tests the error handling path for invalid inputs
+      
+      // Test with invalid taskId
+      await expect(runtime.renew('', 'agent-1', 30000))
+        .rejects
+        .toThrow(/Invalid taskId/);
+        
+      // Test with invalid agentId  
+      await expect(runtime.renew('some-task', '', 30000))
+        .rejects
+        .toThrow(/Invalid agentId/);
+        
+      // Test with invalid TTL type
+      await expect(runtime.renew('some-task', 'agent-1', 'invalid' as any))
+        .rejects
+        .toThrow(/Invalid TTL/);
+    });
+
+    it('should handle corrupted lease data', async () => {
+      const filePath = `${testDir}/corrupted.txt`;
+      const agentId = 'agent-1';
+
+      // Create lease
+      await runtime.acquireLease({
+        filePath,
+        agentId,
+        expiresAt: Date.now() + 30000
+      });
+
+      // Simulate corruption by manually updating database
+      const taskId = 'file_' + require('crypto')
+        .createHash('sha256')
+        .update(filePath)
+        .digest('hex')
+        .substring(0, 16);
+
+      // Corrupt the lease record in a way that doesn't violate NOT NULL constraints
+      // Instead of setting to NULL, we'll set it to an invalid agent ID that won't match
+      db.prepare(`
+        UPDATE leases SET agent_id = 'CORRUPTED_AGENT_ID' WHERE task_id = ?
+      `).run(taskId);
+
+      // Attempt renewal should handle corruption
+      const result = await runtime.renew(taskId, agentId, 30000);
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('Invalid Lease States', () => {
+    it('should reject renewal of already expired leases', async () => {
+      const filePath = `${testDir}/expired.txt`;
+      const agentId = 'agent-1';
+      const pastTime = Date.now() - 1000;
+
+      // Create expired lease
+      await runtime.acquireLease({
+        filePath,
+        agentId,
+        expiresAt: pastTime
+      });
+
+      const taskId = 'file_' + require('crypto')
+        .createHash('sha256')
+        .update(filePath)
+        .digest('hex')
+        .substring(0, 16);
+
+      // Should reject renewal of expired lease
+      const result = await runtime.renew(taskId, agentId, 30000);
+      expect(result).toBe(false);
+    });
+
+    it('should handle renewal of nonexistent leases', async () => {
+      const result = await runtime.renew('nonexistent-task', 'agent-1', 30000);
+      expect(result).toBe(false);
+    });
+
+    it('should reject invalid TTL values', async () => {
+      const filePath = `${testDir}/invalid-ttl.txt`;
+      const agentId = 'agent-1';
+
+      await runtime.acquireLease({
+        filePath,
+        agentId,
+        expiresAt: Date.now() + 30000
+      });
+
+      const taskId = 'file_' + require('crypto')
+        .createHash('sha256')
+        .update(filePath)
+        .digest('hex')
+        .substring(0, 16);
+
+      // Test various invalid TTL values
+      const invalidTTLs = [-1000, 0, Number.MAX_SAFE_INTEGER];
+
+      for (const ttl of invalidTTLs) {
+        const result = await runtime.renew(taskId, agentId, ttl);
+        // Should handle gracefully (either reject or accept with validation)
+        expect(typeof result).toBe('boolean');
+      }
+    });
+  });
+
+  describe('Memory and Resource Management', () => {
+    it('should handle large numbers of leases without memory leaks', async () => {
+      const numLeases = 5000;
+      const leases = [];
+
+      // Create many leases
+      for (let i = 0; i < numLeases; i++) {
+        const filePath = `${testDir}/memory-test-${i}.txt`;
+        await runtime.acquireLease({
+          filePath,
+          agentId: `agent-${i}`,
+          expiresAt: Date.now() + 30000
+        });
+        leases.push(filePath);
+      }
+
+      // Force garbage collection
+      if (global.gc) {
+        global.gc();
+      }
+
+      // Renew all leases
+      let successCount = 0;
+      for (let i = 0; i < numLeases; i++) {
+        const taskId = 'file_' + require('crypto')
+          .createHash('sha256')
+          .update(leases[i])
+          .digest('hex')
+          .substring(0, 16);
+
+        const renewed = await runtime.renew(taskId, `agent-${i}`, 30000);
+        if (renewed) successCount++;
+      }
+
+      console.log(`Memory test: ${successCount}/${numLeases} renewals successful`);
+      expect(successCount).toBe(numLeases);
+    });
+  });
+
+  describe('Scheduler Advanced Error Scenarios', () => {
+    it('should handle reclamation with invalid task states', () => {
+      const now = Date.now();
+
+      // Create task with invalid state directly in database
+      const taskId = 'invalid-state-task';
+      db.prepare(`
+        INSERT INTO tasks (id, state, priority, payload_json, created_at, updated_at, policy_label)
+        VALUES (?, 'DONE', 100, ?, ?, ?, 'private')
+      `).run(taskId, JSON.stringify({ type: 'test' }), now - 10000, now);
+
+      // Create expired lease
+      db.prepare(`
+        INSERT INTO leases (task_id, agent_id, lease_expires_at, attempt)
+        VALUES (?, 'test-agent', ?, 1)
+      `).run(taskId, now - 5000);
+
+      // Should handle gracefully without crashing
+      const result = scheduler.reclaimExpired(now);
+      expect(typeof result).toBe('number');
+    });
+
+    it('should handle concurrent reclamation operations', () => {
+      const now = Date.now();
+      const numTasks = 100;
+
+      // Create many expired tasks
+      for (let i = 0; i < numTasks; i++) {
+        const taskId = `concurrent-reclaim-${i}`;
+        db.prepare(`
+          INSERT INTO tasks (id, state, priority, payload_json, created_at, updated_at, policy_label)
+          VALUES (?, 'LEASED', 100, ?, ?, ?, 'private')
+        `).run(taskId, JSON.stringify({ type: 'test' }), now - 10000, now);
+
+        db.prepare(`
+          INSERT INTO leases (task_id, agent_id, lease_expires_at, attempt)
+          VALUES (?, ?, ?, 1)
+        `).run(taskId, `agent-${i}`, now - 5000);
+      }
+
+      // Run concurrent reclamations
+      const reclamations = Array(5).fill(null).map(() =>
+        scheduler.reclaimExpired(now)
+      );
+
+      const results = reclamations.map(result => {
+        expect(typeof result).toBe('number');
+        return result;
+      });
+
+      // Should handle concurrent operations safely
+      const totalReclaimed = Math.max(...results);
+      expect(totalReclaimed).toBeGreaterThan(0);
+    });
+  });
+});

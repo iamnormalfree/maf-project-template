@@ -1,0 +1,224 @@
+{
+  "mcpServers": {
+    "visual-novel-rpg": {
+      "command": "G:\\new-game\\venv_windows\\Scripts\\python.exe",
+      "args": [
+        "G:\\new-game\\mcp_tool_server.py"
+      ],
+      "cwd": "G:\\new-game"
+    },
+    "mcp_agent_mail": {
+      "type": "http",
+      "url": "http://127.0.0.1:8765/mcp/"
+    }
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "powershell -NoProfile -Command \"$input = $input | ConvertFrom-Json; Write-Output ($input.model.display_name + ' | ' + (Split-Path -Leaf $input.workspace.current_dir) + ' | ' + (Get-Date -Format 'HH:mm:ss'))\""
+  },
+  "autoApprove": {
+    "bash": true,
+    "edit": true,
+    "create": true,
+    "delete": true,
+    "move": true,
+    "git": true,
+    "npm": true,
+    "pip": true
+  },
+  "confirmationRequired": false,
+  "autoExecute": true,
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch",
+      "Read",
+      "Write",
+      "Edit",
+      "Grep",
+      "Glob",
+      "Bash",
+      "mcp__firecrawl__firecrawl_search",
+      "mcp__firecrawl__firecrawl_scrape",
+      "mcp__mcp_agent_mail__acknowledge_message",
+      "mcp__mcp_agent_mail__fetch_inbox",
+      "mcp__mcp_agent_mail__file_reservation_paths",
+      "mcp__mcp_agent_mail__list_contacts",
+      "mcp__mcp_agent_mail__macro_contact_handshake",
+      "mcp__mcp_agent_mail__macro_file_reservation_cycle",
+      "mcp__mcp_agent_mail__macro_prepare_thread",
+      "mcp__mcp_agent_mail__send_message",
+      "mcp__mcp_agent_mail__macro_start_session",
+      "mcp__mcp_agent_mail__mark_message_read",
+      "mcp__mcp_agent_mail__release_file_reservations",
+      "mcp__mcp_agent_mail__renew_file_reservations",
+      "mcp__mcp_agent_mail__reply_message",
+      "mcp__mcp_agent_mail__request_contact",
+      "mcp__mcp_agent_mail__respond_contact",
+      "mcp__mcp_agent_mail__whois",
+      "mcp__mcp_agent_mail__acquire_build_slot",
+      "mcp__mcp_agent_mail__create_agent_identity",
+      "mcp__mcp_agent_mail__ensure_product",
+      "mcp__mcp_agent_mail__ensure_project",
+      "mcp__mcp_agent_mail__fetch_inbox_product",
+      "mcp__mcp_agent_mail__force_release_file_reservation",
+      "mcp__mcp_agent_mail__health_check",
+      "mcp__mcp_agent_mail__install_precommit_guard",
+      "mcp__mcp_agent_mail__products_link",
+      "mcp__mcp_agent_mail__register_agent",
+      "mcp__mcp_agent_mail__release_build_slot",
+      "mcp__mcp_agent_mail__renew_build_slot",
+      "mcp__mcp_agent_mail__search_messages",
+      "mcp__mcp_agent_mail__search_messages_product",
+      "mcp__mcp_agent_mail__set_contact_policy",
+      "mcp__mcp_agent_mail__summarize_thread",
+      "mcp__mcp_agent_mail__summarize_thread_product",
+      "mcp__mcp_agent_mail__uninstall_precommit_guard",
+      "mcp__mcp-agent-mail__acknowledge_message",
+      "mcp__mcp-agent-mail__acquire_build_slot",
+      "mcp__mcp-agent-mail__create_agent_identity",
+      "mcp__mcp-agent-mail__ensure_product",
+      "mcp__mcp-agent-mail__ensure_project",
+      "mcp__mcp-agent-mail__fetch_inbox",
+      "mcp__mcp-agent-mail__fetch_inbox_product",
+      "mcp__mcp-agent-mail__file_reservation_paths",
+      "mcp__mcp-agent-mail__force_release_file_reservation",
+      "mcp__mcp-agent-mail__health_check",
+      "mcp__mcp-agent-mail__install_precommit_guard",
+      "mcp__mcp-agent-mail__list_contacts",
+      "mcp__mcp-agent-mail__macro_contact_handshake",
+      "mcp__mcp-agent-mail__macro_file_reservation_cycle",
+      "mcp__mcp-agent-mail__macro_prepare_thread",
+      "mcp__mcp-agent-mail__macro_start_session",
+      "mcp__mcp-agent-mail__mark_message_read",
+      "mcp__mcp-agent-mail__products_link",
+      "mcp__mcp-agent-mail__register_agent",
+      "mcp__mcp-agent-mail__release_build_slot",
+      "mcp__mcp-agent-mail__release_file_reservations",
+      "mcp__mcp-agent-mail__renew_build_slot",
+      "mcp__mcp-agent-mail__renew_file_reservations",
+      "mcp__mcp-agent-mail__reply_message",
+      "mcp__mcp-agent-mail__request_contact",
+      "mcp__mcp-agent-mail__respond_contact",
+      "mcp__mcp-agent-mail__search_messages",
+      "mcp__mcp-agent-mail__search_messages_product",
+      "mcp__mcp-agent-mail__send_message",
+      "mcp__mcp-agent-mail__set_contact_policy",
+      "mcp__mcp-agent-mail__summarize_thread",
+      "mcp__mcp-agent-mail__summarize_thread_product",
+      "mcp__mcp-agent-mail__uninstall_precommit_guard",
+      "mcp__mcp-agent-mail__whois"
+    ],
+    "deny": [],
+    "ask": []
+  },
+  "hooks": {
+    "UserPromptSubmit": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /root/projects/roundtable/.claude/hooks/response_awareness_prompt.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 /root/projects/roundtable/.claude/hooks/prompt_skill_search.py"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /root/projects/roundtable/.claude/hooks/maf_status_heartbeat.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /root/projects/roundtable/.claude/hooks/orchestrator-firewall.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /root/projects/roundtable/.claude/hooks/block-commit-in-tmux.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /root/projects/roundtable/.claude/hooks/assumption-detector.py"
+          }
+        ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /root/projects/roundtable/.claude/hooks/question-suppression-detector.py"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /root/projects/roundtable/.claude/hooks/skill_catalog_posttool.py"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /root/projects/roundtable/.claude/hooks/reset_skill_tracking.py"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /root/projects/roundtable/.claude/hooks/reset_skill_tracking.py"
+          }
+        ]
+      }
+    ]
+  },
+  "env": {
+    "ANTHROPIC_BASE_URL": "https://api.z.ai/api/anthropic",
+    "ANTHROPIC_AUTH_TOKEN": "15267ec2640844bb82f29e0b1be881aa.TPV6V17gFDjquEfC",
+    "API_TIMEOUT_MS": "3000000",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "glm-4.7",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "glm-4.7",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "glm-4.7"
+  },
+  "enabledMcpjsonServers": [
+    "mcp_agent_mail",
+    "mcp-agent-mail"
+  ]
+}

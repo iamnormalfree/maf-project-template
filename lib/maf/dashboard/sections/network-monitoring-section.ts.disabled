@@ -1,0 +1,597 @@
+// ABOUTME: Network monitoring section generator for MAF dashboard
+// ABOUTME: Provides real-time traffic pattern display, bandwidth visualization, and connection state monitoring
+
+import {
+  NetworkConnectionState,
+  BandwidthUtilization,
+  TrafficPattern,
+  ProtocolAnalysis,
+  ExtendedSecurityMetrics,
+  NetworkDashboardConfig
+} from '../types/network-metrics';
+
+interface NetworkSectionData {
+  networkData: ExtendedSecurityMetrics['networkMonitoring'];
+  lastUpdated: number;
+  config?: Partial<NetworkDashboardConfig>;
+}
+
+/**
+ * Generate comprehensive network monitoring section for dashboard
+ */
+export function generateNetworkMonitoringSection(data: NetworkSectionData): string {
+  const { networkData, lastUpdated, config } = data;
+
+  const lines = [
+    '## 🌐 Network Monitoring',
+    '',
+    `*Last updated: ${new Date(lastUpdated).toISOString()}*`,
+    '',
+    `**Monitoring Intensity:** ${networkData.monitoringIntensity.toUpperCase()}`,
+    `**Performance Budget:** ${networkData.performanceBudget.used.toFixed(2)}% / ${networkData.performanceBudget.allocated.toFixed(2)}% (${networkData.performanceBudget.efficiency.toFixed(1)}% efficiency)`,
+    ''
+  ];
+
+  // Performance budget status
+  const budgetStatus = getBudgetStatusEmoji(networkData.performanceBudget.efficiency);
+  lines.push(`### Performance Budget Status: ${budgetStatus} ${networkData.performanceBudget.efficiency.toFixed(1)}%`);
+  lines.push('');
+
+  if (networkData.performanceBudget.efficiency > 85) {
+    lines.push('🚨 **CRITICAL:** Performance budget exceeded - monitoring intensity reduced automatically');
+    lines.push('');
+  } else if (networkData.performanceBudget.efficiency > 75) {
+    lines.push('⚠️ **WARNING:** Approaching performance budget limits');
+    lines.push('');
+  } else {
+    lines.push('✅ **Performance budget within optimal range**');
+    lines.push('');
+  }
+
+  // Connection states section
+  lines.push('### 🔗 Connection State Monitoring');
+  lines.push('');
+
+  if (networkData.connectionStates.length === 0) {
+    lines.push('*No active connections detected*');
+    lines.push('');
+  } else {
+    const connectionsByState = groupConnectionsByState(networkData.connectionStates);
+    const connectionsByRisk = groupConnectionsByRisk(networkData.connectionStates);
+
+    // Connection summary table
+    lines.push('#### Connection Summary');
+    lines.push('');
+    lines.push('| State | Count | Risk Distribution |');
+    lines.push('|-------|-------|------------------|');
+
+    for (const [state, connections] of Object.entries(connectionsByState)) {
+      const riskDistribution = getRiskDistribution(connections);
+      lines.push(`| ${getStateEmoji(state)} ${state} | ${connections.length} | ${riskDistribution} |`);
+    }
+    lines.push('');
+
+    // High-risk connections
+    const highRiskConnections = networkData.connectionStates.filter(c => c.riskLevel === 'high' || c.riskLevel === 'critical');
+    if (highRiskConnections.length > 0) {
+      lines.push('#### 🔴 High-Risk Connections');
+      lines.push('');
+      lines.push('| Protocol | Local | Remote | Process | Risk | Duration |');
+      lines.push('|----------|--------|--------|---------|------|----------|');
+
+      for (const conn of highRiskConnections.slice(0, 10)) {
+        const duration = formatDuration(conn.duration);
+        lines.push(`| ${conn.protocol.toUpperCase()} | ${conn.localAddress}:${conn.localPort} | ${conn.remoteAddress}:${conn.remotePort} | ${conn.processName || 'Unknown'} | ${getRiskEmoji(conn.riskLevel)} ${conn.riskLevel.toUpperCase()} | ${duration} |`);
+      }
+      lines.push('');
+    }
+  }
+
+  // Bandwidth utilization section
+  lines.push('### 📊 Bandwidth Utilization');
+  lines.push('');
+
+  const bandwidth = networkData.bandwidthUtilization;
+  const bandwidthEmoji = getBandwidthEmoji(bandwidth.utilizationPercentage);
+  lines.push(`#### Interface: ${bandwidth.interfaceName} ${bandwidthEmoji} ${bandwidth.utilizationPercentage.toFixed(1)}%`);
+  lines.push('');
+
+  lines.push('**Current Metrics:**');
+  lines.push(`- **Download:** ${formatBytes(bandwidth.bytesInPerSecond)}/s (${bandwidth.packetsInPerSecond} packets/s)`);
+  lines.push(`- **Upload:** ${formatBytes(bandwidth.bytesOutPerSecond)}/s (${bandwidth.packetsOutPerSecond} packets/s)`);
+  lines.push(`- **Rate Limit Status:** ${getRateLimitStatusEmoji(bandwidth.rateLimitStatus)} ${bandwidth.rateLimitStatus.toUpperCase()}`);
+  lines.push(`- **Active Connections:** ${bandwidth.activeConnections}`);
+  lines.push(`- **Peak Utilization:** ${bandwidth.peakUtilization.toFixed(1)}%`);
+  lines.push(`- **Average Utilization:** ${bandwidth.averageUtilization.toFixed(1)}%`);
+  lines.push('');
+
+  // Rate limiting compliance
+  if (bandwidth.rateLimitStatus === 'exceeded') {
+    lines.push('🚨 **RATE LIMIT EXCEEDED** - Bandwidth utilization exceeds thresholds');
+    lines.push('');
+  } else if (bandwidth.rateLimitStatus === 'approaching_limits') {
+    lines.push('⚠️ **APPROACHING LIMITS** - Monitor bandwidth usage closely');
+    lines.push('');
+  } else {
+    lines.push('✅ **WITHIN LIMITS** - Bandwidth usage is acceptable');
+    lines.push('');
+  }
+
+  // Traffic patterns section
+  lines.push('### 🕵️ Traffic Pattern Analysis');
+  lines.push('');
+
+  if (networkData.trafficPatterns.length === 0) {
+    lines.push('*No traffic patterns detected*');
+    lines.push('');
+  } else {
+    const patternsByRisk = groupTrafficPatternsByRisk(networkData.trafficPatterns);
+    const anomalyCount = networkData.trafficPatterns.filter(p => p.behavioralPattern !== 'normal').length;
+
+    lines.push('**Traffic Analysis Summary:**');
+    lines.push(`- **Total Patterns Analyzed:** ${networkData.trafficPatterns.length}`);
+    lines.push(`- **Anomalous Patterns:** ${anomalyCount} (${(anomalyCount / networkData.trafficPatterns.length * 100).toFixed(1)}%)`);
+    lines.push('');
+
+    // Risk distribution
+    lines.push('#### Risk Distribution');
+    lines.push('');
+    for (const [risk, patterns] of Object.entries(patternsByRisk)) {
+      const riskEmoji = getRiskEmoji(risk as any);
+      lines.push(`- ${riskEmoji} **${risk.toUpperCase()}:** ${patterns.length} patterns`);
+    }
+    lines.push('');
+
+    // High-risk traffic patterns
+    const suspiciousPatterns = networkData.trafficPatterns.filter(
+      p => p.riskLevel === 'high' || p.riskLevel === 'critical' || p.behavioralPattern !== 'normal'
+    );
+
+    if (suspiciousPatterns.length > 0) {
+      lines.push('#### 🔍 Suspicious Traffic Patterns');
+      lines.push('');
+      lines.push('| Source | Destination | Protocol | Pattern | Risk | Anomaly Score |');
+      lines.push('|--------|-------------|----------|---------|------|----------------|');
+
+      for (const pattern of suspiciousPatterns.slice(0, 15)) {
+        const patternEmoji = getPatternEmoji(pattern.behavioralPattern);
+        lines.push(`| ${pattern.sourceIp}:${pattern.sourcePort} | ${pattern.destinationIp}:${pattern.destinationPort} | ${pattern.protocol.toUpperCase()} | ${patternEmoji} ${pattern.behavioralPattern} | ${getRiskEmoji(pattern.riskLevel)} ${pattern.riskLevel} | ${pattern.anomalyScore.toFixed(3)} |`);
+      }
+      lines.push('');
+    }
+  }
+
+  // Protocol analysis section
+  lines.push('### 🔬 Protocol Analysis');
+  lines.push('');
+
+  if (networkData.protocolAnalysis.length === 0) {
+    lines.push('*No protocol analysis data available*');
+    lines.push('');
+  } else {
+    for (const analysis of networkData.protocolAnalysis) {
+      const layerEmoji = getLayerEmoji(analysis.layer);
+      const complianceEmoji = getComplianceEmoji(analysis.inspectionResults.complianceStatus);
+
+      lines.push(`#### ${layerEmoji} ${analysis.protocol.toUpperCase()} (${analysis.layer} layer) ${complianceEmoji}`);
+      lines.push('');
+
+      // Threat detection summary
+      const threatCount = analysis.threatDetection.signatureMatches.length +
+                        analysis.threatDetection.attackPatterns.length +
+                        analysis.threatDetection.suspiciousActivity.length;
+
+      if (threatCount > 0) {
+        lines.push(`**🚨 Threats Detected:** ${threatCount}`);
+        lines.push('');
+
+        if (analysis.threatDetection.signatureMatches.length > 0) {
+          lines.push(`- **Signature Matches:** ${analysis.threatDetection.signatureMatches.join(', ')}`);
+        }
+
+        if (analysis.threatDetection.attackPatterns.length > 0) {
+          lines.push(`- **Attack Patterns:** ${analysis.threatDetection.attackPatterns.join(', ')}`);
+        }
+
+        if (analysis.threatDetection.suspiciousActivity.length > 0) {
+          lines.push(`- **Suspicious Activity:** ${analysis.threatDetection.suspiciousActivity.join(', ')}`);
+        }
+        lines.push('');
+      } else {
+        lines.push('✅ **No threats detected**');
+        lines.push('');
+      }
+
+      // Performance metrics
+      lines.push(`**Analysis Performance:**`);
+      lines.push(`- **Processing Time:** ${analysis.performanceMetrics.processingTime.toFixed(2)}ms`);
+      lines.push(`- **Resource Usage:** ${analysis.performanceMetrics.resourceUsage.toFixed(1)}%`);
+      lines.push(`- **Analysis Depth:** ${analysis.performanceMetrics.analysisDepth.toUpperCase()}`);
+      lines.push(`- **Context-Aware Level:** ${(analysis.performanceMetrics.contextAwareLevel * 100).toFixed(1)}%`);
+      lines.push('');
+
+      // Attack correlation
+      if (analysis.attackCorrelation.relatedAttacks.length > 0) {
+        lines.push(`**🔗 Attack Correlation:** ${analysis.attackCorrelation.relatedAttacks.join(', ')}`);
+        lines.push('');
+      }
+    }
+  }
+
+  // Interactive timeline explorer (simulated)
+  lines.push('### 📈 Interactive Timeline Explorer');
+  lines.push('');
+
+  if (networkData.trafficPatterns.length > 0) {
+    const timeRanges = generateTimeRanges(networkData.trafficPatterns);
+
+    lines.push('**Traffic Timeline Summary:**');
+    lines.push('');
+
+    for (const range of timeRanges) {
+      const activityEmoji = getActivityEmoji(range.activityLevel);
+      lines.push(`- ${activityEmoji} **${range.period}**: ${range.patternCount} patterns, ${range.anomalyCount} anomalies (${range.riskLevel.toUpperCase()} risk)`);
+    }
+    lines.push('');
+
+    lines.push('*Use network monitoring dashboard to explore detailed timeline with interactive filtering*');
+    lines.push('');
+  } else {
+    lines.push('*No timeline data available*');
+    lines.push('');
+  }
+
+  // Risk scoring heat map (text representation)
+  lines.push('### 🗺️ Risk Scoring Heat Map');
+  lines.push('');
+
+  const heatMapData = generateHeatMapData(networkData);
+  if (heatMapData.length > 0) {
+    lines.push('**Network Risk Distribution:**');
+    lines.push('');
+
+    for (const item of heatMapData) {
+      lines.push(`${item.emoji} **${item.zone}**: ${item.count} incidents (${item.percentage.toFixed(1)}%)`);
+    }
+    lines.push('');
+  } else {
+    lines.push('*No risk data available for heat map*');
+    lines.push('');
+  }
+
+  // Network monitoring recommendations
+  lines.push('### 💡 Network Monitoring Recommendations');
+  lines.push('');
+
+  const recommendations = generateNetworkRecommendations(networkData);
+  for (const recommendation of recommendations) {
+    lines.push(`- ${recommendation}`);
+  }
+  lines.push('');
+
+  // Performance optimization tips
+  lines.push('### ⚡ Performance Optimization');
+  lines.push('');
+
+  const optimizationTips = generateOptimizationTips(networkData);
+  for (const tip of optimizationTips) {
+    lines.push(`- ${tip}`);
+  }
+  lines.push('');
+
+  return lines.join('\n');
+}
+
+// Helper functions for formatting and analysis
+
+function getBudgetStatusEmoji(efficiency: number): string {
+  if (efficiency > 85) return '🔴';
+  if (efficiency > 75) return '🟡';
+  return '🟢';
+}
+
+function getRiskEmoji(riskLevel: string): string {
+  switch (riskLevel.toLowerCase()) {
+    case 'critical': return '🔴';
+    case 'high': return '🟠';
+    case 'medium': return '🟡';
+    case 'low': return '🟢';
+    default: return '⚪';
+  }
+}
+
+function getStateEmoji(state: string): string {
+  switch (state.toLowerCase()) {
+    case 'established': return '🟢';
+    case 'listening': return '🔵';
+    case 'time_wait': return '🟡';
+    case 'close_wait': return '🟠';
+    case 'closed': return '⚪';
+    default: return '⚪';
+  }
+}
+
+function getBandwidthEmoji(utilization: number): string {
+  if (utilization > 90) return '🔴';
+  if (utilization > 75) return '🟠';
+  if (utilization > 50) return '🟡';
+  return '🟢';
+}
+
+function getRateLimitStatusEmoji(status: string): string {
+  switch (status.toLowerCase()) {
+    case 'within_limits': return '🟢';
+    case 'approaching_limits': return '🟡';
+    case 'exceeded': return '🔴';
+    default: return '⚪';
+  }
+}
+
+function getPatternEmoji(pattern: string): string {
+  switch (pattern.toLowerCase()) {
+    case 'normal': return '🟢';
+    case 'suspicious': return '🟡';
+    case 'malicious': return '🔴';
+    case 'anomalous': return '🟠';
+    default: return '⚪';
+  }
+}
+
+function getLayerEmoji(layer: string): string {
+  switch (layer.toLowerCase()) {
+    case 'application': return '🔷';
+    case 'transport': return '🔶';
+    case 'network': return '🔵';
+    case 'link': return '🟦';
+    default: return '⚪';
+  }
+}
+
+function getComplianceEmoji(status: string): string {
+  switch (status.toLowerCase()) {
+    case 'compliant': return '✅';
+    case 'violating': return '❌';
+    case 'suspicious': return '⚠️';
+    default: return '❓';
+  }
+}
+
+function getActivityEmoji(level: string): string {
+  switch (level.toLowerCase()) {
+    case 'high': return '🔴';
+    case 'medium': return '🟡';
+    case 'low': return '🟢';
+    default: return '⚪';
+  }
+}
+
+function groupConnectionsByState(connections: NetworkConnectionState[]): Record<string, NetworkConnectionState[]> {
+  const groups: Record<string, NetworkConnectionState[]> = {};
+
+  for (const conn of connections) {
+    if (!groups[conn.state]) {
+      groups[conn.state] = [];
+    }
+    groups[conn.state].push(conn);
+  }
+
+  return groups;
+}
+
+function groupConnectionsByRisk(connections: NetworkConnectionState[]): Record<string, NetworkConnectionState[]> {
+  const groups: Record<string, NetworkConnectionState[]> = {};
+
+  for (const conn of connections) {
+    if (!groups[conn.riskLevel]) {
+      groups[conn.riskLevel] = [];
+    }
+    groups[conn.riskLevel].push(conn);
+  }
+
+  return groups;
+}
+
+function groupTrafficPatternsByRisk(patterns: TrafficPattern[]): Record<string, TrafficPattern[]> {
+  const groups: Record<string, TrafficPattern[]> = {};
+
+  for (const pattern of patterns) {
+    if (!groups[pattern.riskLevel]) {
+      groups[pattern.riskLevel] = [];
+    }
+    groups[pattern.riskLevel].push(pattern);
+  }
+
+  return groups;
+}
+
+function getRiskDistribution(connections: NetworkConnectionState[]): string {
+  const distribution: Record<string, number> = {};
+
+  for (const conn of connections) {
+    distribution[conn.riskLevel] = (distribution[conn.riskLevel] || 0) + 1;
+  }
+
+  const parts: string[] = [];
+  for (const [risk, count] of Object.entries(distribution)) {
+    parts.push(`${getRiskEmoji(risk)} ${risk}: ${count}`);
+  }
+
+  return parts.join(', ');
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 1000) return `${ms}ms`;
+  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+  return `${(ms / 60000).toFixed(1)}m`;
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+}
+
+function generateTimeRanges(patterns: TrafficPattern[]): Array<{
+  period: string;
+  patternCount: number;
+  anomalyCount: number;
+  riskLevel: string;
+  activityLevel: string;
+}> {
+  const now = Date.now();
+  const ranges = [
+    { period: 'Last Hour', start: now - 3600000, end: now },
+    { period: 'Last 6 Hours', start: now - 21600000, end: now - 3600000 },
+    { period: 'Last 24 Hours', start: now - 86400000, end: now - 21600000 }
+  ];
+
+  return ranges.map(range => {
+    const rangePatterns = patterns.filter(p => p.timestamp >= range.start && p.timestamp < range.end);
+    const anomalies = rangePatterns.filter(p => p.behavioralPattern !== 'normal');
+    const highRiskCount = rangePatterns.filter(p => p.riskLevel === 'high' || p.riskLevel === 'critical').length;
+
+    let riskLevel = 'low';
+    if (highRiskCount > 5) riskLevel = 'high';
+    else if (highRiskCount > 0) riskLevel = 'medium';
+
+    let activityLevel = 'low';
+    if (rangePatterns.length > 50) activityLevel = 'high';
+    else if (rangePatterns.length > 10) activityLevel = 'medium';
+
+    return {
+      period: range.period,
+      patternCount: rangePatterns.length,
+      anomalyCount: anomalies.length,
+      riskLevel,
+      activityLevel
+    };
+  });
+}
+
+function generateHeatMapData(networkData: ExtendedSecurityMetrics['networkMonitoring']): Array<{
+  zone: string;
+  emoji: string;
+  count: number;
+  percentage: number;
+}> {
+  const data = [
+    { zone: 'Critical Risk Zone', emoji: '🔴', count: 0, percentage: 0 },
+    { zone: 'High Risk Zone', emoji: '🟠', count: 0, percentage: 0 },
+    { zone: 'Medium Risk Zone', emoji: '🟡', count: 0, percentage: 0 },
+    { zone: 'Low Risk Zone', emoji: '🟢', count: 0, percentage: 0 }
+  ];
+
+  // Count traffic patterns by risk level
+  for (const pattern of networkData.trafficPatterns) {
+    switch (pattern.riskLevel) {
+      case 'critical':
+        data[0].count++;
+        break;
+      case 'high':
+        data[1].count++;
+        break;
+      case 'medium':
+        data[2].count++;
+        break;
+      case 'low':
+        data[3].count++;
+        break;
+    }
+  }
+
+  // Count connection states by risk level
+  for (const conn of networkData.connectionStates) {
+    switch (conn.riskLevel) {
+      case 'critical':
+        data[0].count++;
+        break;
+      case 'high':
+        data[1].count++;
+        break;
+      case 'medium':
+        data[2].count++;
+        break;
+      case 'low':
+        data[3].count++;
+        break;
+    }
+  }
+
+  // Calculate percentages
+  const total = data.reduce((sum, item) => sum + item.count, 0);
+  if (total > 0) {
+    data.forEach(item => {
+      item.percentage = (item.count / total) * 100;
+    });
+  }
+
+  return data.filter(item => item.count > 0);
+}
+
+function generateNetworkRecommendations(networkData: ExtendedSecurityMetrics['networkMonitoring']): string[] {
+  const recommendations: string[] = [];
+
+  // Connection recommendations
+  const highRiskConnections = networkData.connectionStates.filter(c => c.riskLevel === 'high' || c.riskLevel === 'critical');
+  if (highRiskConnections.length > 0) {
+    recommendations.push(`🔍 Investigate ${highRiskConnections.length} high-risk connections immediately`);
+  }
+
+  // Bandwidth recommendations
+  if (networkData.bandwidthUtilization.utilizationPercentage > 80) {
+    recommendations.push('📊 Implement bandwidth throttling or optimize data transfer');
+  }
+
+  // Traffic pattern recommendations
+  const anomalousPatterns = networkData.trafficPatterns.filter(p => p.behavioralPattern !== 'normal');
+  if (anomalousPatterns.length > networkData.trafficPatterns.length * 0.2) {
+    recommendations.push('🕵️ High anomaly rate detected - review network security policies');
+  }
+
+  // Protocol analysis recommendations
+  const violations = networkData.protocolAnalysis.filter(p => p.inspectionResults.complianceStatus === 'violating');
+  if (violations.length > 0) {
+    recommendations.push(`🔬 Address ${violations.length} protocol compliance violations`);
+  }
+
+  // Performance recommendations
+  if (networkData.performanceBudget.efficiency > 75) {
+    recommendations.push('⚡ Consider reducing monitoring intensity to stay within performance budget');
+  }
+
+  if (recommendations.length === 0) {
+    recommendations.push('✅ Network monitoring is operating optimally - no immediate actions required');
+  }
+
+  return recommendations;
+}
+
+function generateOptimizationTips(networkData: ExtendedSecurityMetrics['networkMonitoring']): string[] {
+  const tips: string[] = [];
+
+  if (networkData.connectionStates.length > 500) {
+    tips.push('Reduce connection monitoring frequency for large connection pools');
+  }
+
+  if (networkData.trafficPatterns.length > 1000) {
+    tips.push('Implement sampling for traffic pattern analysis at scale');
+  }
+
+  if (networkData.monitoringIntensity === 'high') {
+    tips.push('Consider adaptive monitoring to reduce resource usage during low-traffic periods');
+  }
+
+  const avgAnalysisTime = networkData.protocolAnalysis.reduce((sum, p) => sum + p.performanceMetrics.processingTime, 0) /
+                         networkData.protocolAnalysis.length || 0;
+
+  if (avgAnalysisTime > 50) {
+    tips.push('Optimize protocol analysis algorithms for better performance');
+  }
+
+  tips.push('Regular review and cleanup of stale monitoring data');
+  tips.push('Configure appropriate data retention policies for compliance');
+
+  return tips;
+}
