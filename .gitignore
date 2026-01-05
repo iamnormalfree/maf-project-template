@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Build
+dist/
+
+# MAF local state
+.maf/state/
+.maf/logs/
+.agent-mail/
+
+# Beads runtime
+.beads/daemon.*
+.beads/*.db
+.beads/*.lock
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/
